@@ -19,6 +19,9 @@
 
    Caddy will obtain a certificate for `pong.northcloud.biz` and proxy HTTPS to the app on `localhost:3000`. Socket.IO WebSockets work through the proxy by default. If `reload` fails after a config change, use `restart` instead. After the first deploy that adds or changes the Caddyfile, run the `sudo cp`, `sudo caddy validate`, and `sudo systemctl restart caddy` steps again.
 
+   **Optional — passwordless Caddy updates:** To let deploy automation update Caddy without a sudo password, install the included sudoers fragment once on the server:  
+   `sudo cp ~/cajpong/deploy/sudoers.cajpong /etc/sudoers.d/cajpong && sudo chmod 440 /etc/sudoers.d/cajpong && sudo visudo -c`
+
 ## Deploy from your machine
 
 From the repo root:

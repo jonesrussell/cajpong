@@ -110,7 +110,8 @@ async function serveStatic(
 ): Promise<void> {
   const url = req.url === '/' || !req.url ? '/index.html' : req.url
   const pathname = url.split('?')[0]
-  const path = resolve(staticDir, pathname === '/' ? 'index.html' : pathname)
+  const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '')
+  const path = resolve(join(staticDir, relative))
   const staticRoot = resolve(staticDir)
   if (path !== staticRoot && !path.startsWith(staticRoot + '/')) {
     res.writeHead(403)
