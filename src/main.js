@@ -1,10 +1,11 @@
 import Phaser from 'phaser'
 import Game from './scenes/Game.js'
+import { WIDTH, HEIGHT } from './constants.js'
 
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: WIDTH,
+  height: HEIGHT,
   parent: 'body',
   physics: {
     default: 'arcade',
