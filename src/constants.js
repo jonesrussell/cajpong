@@ -21,6 +21,10 @@ export const SCORE_FONT_SIZE = '48px'
 
 export const SERVE_DELAY_MS = 500
 
+export const POINTS_TO_WIN = 11
+export const BALL_PADDLE_SEPARATION = 2
+export const WIN_DISPLAY_DELAY_MS = 2500
+
 export const COLORS = {
   WHITE: 0xffffff,
   WALL: 0x444444,

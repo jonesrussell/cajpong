@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import Title from './scenes/Title.js'
 import Game from './scenes/Game.js'
 import { WIDTH, HEIGHT } from './constants.js'
 
@@ -16,7 +17,7 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
   },
-  scene: [Game],
+  scene: [Title, Game],
 }
 
 new Phaser.Game(config)
