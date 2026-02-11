@@ -2,13 +2,22 @@
 
 ## One-time setup on the server
 
-SSH to the host and install Node (v18+), then optionally [pm2](https://pm2.keymetrics.io/) to keep the app running:
+1. **Node** (v18+) — for the app.
+2. **Caddy** — reverse proxy and TLS (Let's Encrypt) for `pong.northcloud.biz`. The repo includes a `Caddyfile`; after deploy, install Caddy (if needed) and load the config. Run these **once on the server** (sudo will prompt for your password):
 
-```bash
-ssh jones@pong.northcloud.biz
-# Install Node (e.g. via nvm or system package manager)
-# Optional: npm install -g pm2
-```
+   ```bash
+   ssh jones@pong.northcloud.biz
+
+   # Install Caddy (Debian/Ubuntu) if not already installed
+   sudo apt install -y caddy
+
+   # Use the Caddyfile from the deployed app and restart Caddy
+   sudo cp ~/cajpong/Caddyfile /etc/caddy/Caddyfile
+   sudo caddy validate --config /etc/caddy/Caddyfile
+   sudo systemctl restart caddy
+   ```
+
+   Caddy will obtain a certificate for `pong.northcloud.biz` and proxy HTTPS to the app on `localhost:3000`. Socket.IO WebSockets work through the proxy by default. If `reload` fails after a config change, use `restart` instead. After the first deploy that adds or changes the Caddyfile, run the `sudo cp`, `sudo caddy validate`, and `sudo systemctl restart caddy` steps again.
 
 ## Deploy from your machine
 
@@ -38,7 +47,7 @@ npm install
 npm start
 ```
 
-The server listens on `PORT` (default 3000), serves the static client from `dist/`, and handles Socket.IO. To listen on 80 or use HTTPS, put the app behind nginx (or another reverse proxy) or set `PORT=80` and run with appropriate privileges.
+The server listens on `PORT` (default 3000). Caddy in front handles HTTPS and proxies to this port.
 
 ## Overriding defaults
 
