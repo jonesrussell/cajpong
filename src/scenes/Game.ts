@@ -1,3 +1,4 @@
+import type { Socket } from 'socket.io-client'
 import {
   WIDTH,
   HEIGHT,
@@ -21,9 +22,15 @@ import {
   COLORS,
 } from '../constants'
 import { getWinner } from '../gameLogic'
+import type { GameState } from '../gameState'
 
 type PaddleWithBody = Phaser.GameObjects.Image & { body: Phaser.Physics.Arcade.StaticBody }
 type WallWithBody = Phaser.GameObjects.Rectangle & { body: Phaser.Physics.Arcade.StaticBody }
+
+interface GameSceneData {
+  side?: 'left' | 'right'
+  socket?: Socket
+}
 
 export default class Game extends Phaser.Scene {
   private leftPaddle!: PaddleWithBody
@@ -39,8 +46,18 @@ export default class Game extends Phaser.Scene {
   private lastPaddleHitTime = 0
   private gameOver = false
 
+  private socket: Socket | undefined
+  private side!: 'left' | 'right'
+  private lastState: GameState | null = null
+  private gameOverShown = false
+
   constructor() {
     super({ key: 'Game' })
+  }
+
+  init(data: GameSceneData): void {
+    this.socket = data.socket
+    this.side = data.side ?? 'left'
   }
 
   getDimensions(): { width: number; height: number } {
@@ -73,6 +90,7 @@ export default class Game extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.getDimensions()
+    const isOnline = !!this.socket
 
     // Create paddle texture (white rectangle)
     const g = this.make.graphics(undefined, false)
@@ -102,11 +120,13 @@ export default class Game extends Phaser.Scene {
     this.ball.setBounce(BALL_BOUNCE)
     this.ball.setCollideWorldBounds(false)
 
-    // Colliders: ball vs walls and paddles
+    // Colliders: ball vs walls always; ball vs paddles only in local mode
     this.physics.add.collider(this.ball, topWall)
     this.physics.add.collider(this.ball, bottomWall)
-    this.physics.add.collider(this.ball, this.leftPaddle, this.onBallHitPaddle, undefined, this)
-    this.physics.add.collider(this.ball, this.rightPaddle, this.onBallHitPaddle, undefined, this)
+    if (!isOnline) {
+      this.physics.add.collider(this.ball, this.leftPaddle, this.onBallHitPaddle, undefined, this)
+      this.physics.add.collider(this.ball, this.rightPaddle, this.onBallHitPaddle, undefined, this)
+    }
 
     // Score
     this.scoreText = this.add.text(width / 2, SCORE_TEXT_Y, '0 - 0', {
@@ -120,13 +140,51 @@ export default class Game extends Phaser.Scene {
     this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W)
     this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S)
 
-    // Serve state
-    this.serving = false
-    this.lastPaddleHitTime = 0
-    this.gameOver = false
+    if (isOnline) {
+      this.lastState = null
+      this.socket!.on('game_state', (payload: { state: GameState; tick: number }) => {
+        this.lastState = payload.state
+      })
+      this.socket!.on('opponent_left', () => this.onOpponentLeft())
+      this.socket!.on('disconnect', () => this.onOpponentLeft())
+    } else {
+      // Serve state and initial serve (local only)
+      this.serving = false
+      this.lastPaddleHitTime = 0
+      this.gameOver = false
+      this.serve(Phaser.Math.RND.pick([-1, 1]))
+    }
+  }
 
-    // Initial serve (random direction)
-    this.serve(Phaser.Math.RND.pick([-1, 1]))
+  private onOpponentLeft(): void {
+    const { width, height } = this.getDimensions()
+    this.add.text(width / 2, height / 2, 'Opponent disconnected', {
+      fontSize: '32px',
+      color: COLORS.TEXT,
+    }).setOrigin(0.5)
+    this.time.delayedCall(2000, () => {
+      this.scene.start('Title')
+    })
+  }
+
+  private applyState(state: GameState): void {
+    this.ball.setPosition(state.ballX, state.ballY)
+    this.ball.body?.velocity.set(state.ballVx, state.ballVy)
+    this.leftPaddle.y = state.leftPaddleY
+    this.rightPaddle.y = state.rightPaddleY
+    this.scoreText.setText(`${state.scoreLeft} - ${state.scoreRight}`)
+    if (state.gameOver && state.winner && !this.gameOverShown) {
+      this.gameOverShown = true
+      const { width, height } = this.getDimensions()
+      const message = state.winner === 'left' ? 'Left wins!' : 'Right wins!'
+      this.add.text(width / 2, height / 2, message, {
+        fontSize: '56px',
+        color: COLORS.TEXT,
+      }).setOrigin(0.5)
+      this.time.delayedCall(WIN_DISPLAY_DELAY_MS, () => {
+        this.scene.start('Title')
+      })
+    }
   }
 
   resetBall(): void {
@@ -203,7 +261,18 @@ export default class Game extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const { width, height } = this.getDimensions()
+    const isOnline = !!this.socket
 
+    if (isOnline) {
+      if (!this.lastState) return
+      this.applyState(this.lastState)
+      const up = this.side === 'left' ? this.keyW.isDown : this.cursors.up!.isDown
+      const down = this.side === 'left' ? this.keyS.isDown : this.cursors.down!.isDown
+      this.socket!.emit('input', { up, down })
+      return
+    }
+
+    // Local mode
     if (this.gameOver) {
       this.ball.setVelocity(0, 0)
       return
