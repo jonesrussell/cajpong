@@ -1,9 +1,9 @@
 import Phaser from 'phaser'
-import Title from './scenes/Title.js'
-import Game from './scenes/Game.js'
-import { WIDTH, HEIGHT } from './constants.js'
+import Title from './scenes/Title'
+import Game from './scenes/Game'
+import { WIDTH, HEIGHT } from './constants'
 
-const config = {
+const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: WIDTH,
   height: HEIGHT,

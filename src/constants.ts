@@ -29,4 +29,4 @@ export const COLORS = {
   WHITE: 0xffffff,
   WALL: 0x444444,
   TEXT: '#ffffff',
-}
+} as const
