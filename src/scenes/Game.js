@@ -65,8 +65,8 @@ export default class Game extends Phaser.Scene {
     // Colliders: ball vs walls and paddles
     this.physics.add.collider(this.ball, topWall)
     this.physics.add.collider(this.ball, bottomWall)
-    this.physics.add.collider(this.ball, this.leftPaddle, this.onBallHitPaddle)
-    this.physics.add.collider(this.ball, this.rightPaddle, this.onBallHitPaddle)
+    this.physics.add.collider(this.ball, this.leftPaddle, this.onBallHitPaddle, null, this)
+    this.physics.add.collider(this.ball, this.rightPaddle, this.onBallHitPaddle, null, this)
 
     // Score
     this.scoreLeft = 0
@@ -99,13 +99,21 @@ export default class Game extends Phaser.Scene {
     const halfPaddle = PADDLE_WIDTH / 2
     const halfBall = BALL_SIZE
     const gap = 2
-    const newX = ball.x < paddle.x
+    const hitFromLeft = ball.x < paddle.x
+    const newX = hitFromLeft
       ? paddle.x - halfPaddle - halfBall - gap
       : paddle.x + halfPaddle + halfBall + gap
     ball.setPosition(newX, ball.y)
 
     const { x: vx, y: vy } = ball.body.velocity
-    ball.setVelocity(vx * BALL_SPEED_INCREASE, vy * BALL_SPEED_INCREASE)
+    const speed = Math.max(Math.hypot(vx, vy), BALL_SPEED) * BALL_SPEED_INCREASE
+    const offset = Phaser.Math.Clamp((ball.y - paddle.y) / (PADDLE_HEIGHT / 2), -1, 1)
+    const angle = offset * BALL_ANGLE_VARIATION
+    const direction = hitFromLeft ? -1 : 1
+    ball.setVelocity(
+      direction * speed * Math.cos(angle),
+      speed * Math.sin(angle)
+    )
   }
 
   serve(direction) {
