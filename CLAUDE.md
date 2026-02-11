@@ -10,17 +10,23 @@ CajPong is a two-player Pong game built with Phaser 3 and Vite.
 
 - `npm run dev` — Start Vite dev server with hot reload
 - `npm run build` — Production build to `dist/`
-
-No test framework or linter is configured.
+- `npm run typecheck` — Type-check with TypeScript (no emit)
+- `npm run test` — Run tests in watch mode (Vitest)
+- `npm run test:run` — Run tests once
+- `npm run lint` — Lint with ESLint 9 (flat config)
 
 ## Architecture
 
-**Entry point:** `index.html` loads `src/main.js`, which creates the Phaser game instance.
+**Entry point:** `index.html` loads `src/main.ts`, which creates the Phaser game instance.
 
 **Key files:**
-- `src/main.js` — Phaser.Game config (arcade physics, no gravity, scale-to-fit)
-- `src/constants.js` — All game tuning values (dimensions, speeds, sizes, colors)
-- `src/scenes/Game.js` — Single scene containing all gameplay logic
+- `src/main.ts` — Phaser.Game config (arcade physics, no gravity, scale-to-fit)
+- `src/constants.ts` — All game tuning values (dimensions, speeds, sizes, colors)
+- `src/scenes/Game.ts` — Single scene containing all gameplay logic
+
+The project uses **TypeScript**. Run `npm run typecheck` to type-check without building.
+
+**Tests:** Vitest in `src/**/*.test.ts`. Pure game logic lives in `src/gameLogic.ts` (e.g. `getWinner`) and is used by the Game scene so win logic can be tested without Phaser.
 
 **Physics approach:** Paddles use static bodies moved by position (`updateFromGameObject()`) each frame to prevent ball-sticking issues. The ball uses a dynamic body with arcade physics colliders against walls and paddles.
 

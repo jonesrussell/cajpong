@@ -16,11 +16,11 @@ import {
   SCORE_TEXT_Y,
   SCORE_FONT_SIZE,
   SERVE_DELAY_MS,
-  POINTS_TO_WIN,
   BALL_PADDLE_SEPARATION,
   WIN_DISPLAY_DELAY_MS,
   COLORS,
 } from '../constants'
+import { getWinner } from '../gameLogic'
 
 type PaddleWithBody = Phaser.GameObjects.Image & { body: Phaser.Physics.Arcade.StaticBody }
 type WallWithBody = Phaser.GameObjects.Rectangle & { body: Phaser.Physics.Arcade.StaticBody }
@@ -75,13 +75,13 @@ export default class Game extends Phaser.Scene {
     const { width, height } = this.getDimensions()
 
     // Create paddle texture (white rectangle)
-    const g = this.make.graphics({ add: false })
+    const g = this.make.graphics(undefined, false)
     g.fillStyle(COLORS.WHITE, 1)
     g.fillRect(0, 0, PADDLE_WIDTH, PADDLE_HEIGHT)
     g.generateTexture('paddle', PADDLE_WIDTH, PADDLE_HEIGHT)
 
     // Create ball texture (white circle)
-    const bg = this.make.graphics({ add: false })
+    const bg = this.make.graphics(undefined, false)
     bg.fillStyle(COLORS.WHITE, 1)
     bg.fillCircle(BALL_SIZE, BALL_SIZE, BALL_SIZE)
     bg.generateTexture('ball', BALL_SIZE * 2, BALL_SIZE * 2)
@@ -136,12 +136,10 @@ export default class Game extends Phaser.Scene {
   }
 
   checkWin(): void {
-    if (this.scoreLeft === POINTS_TO_WIN) {
+    const winner = getWinner(this.scoreLeft, this.scoreRight)
+    if (winner) {
       this.gameOver = true
-      this.onWin('left')
-    } else if (this.scoreRight === POINTS_TO_WIN) {
-      this.gameOver = true
-      this.onWin('right')
+      this.onWin(winner)
     }
   }
 
@@ -159,8 +157,8 @@ export default class Game extends Phaser.Scene {
   }
 
   onBallHitPaddle(
-    ball: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-    paddle: Phaser.Types.Physics.Arcade.GameObjectWithBody
+    ball: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | Phaser.Tilemaps.Tile,
+    paddle: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | Phaser.Tilemaps.Tile
   ): void {
     const now = this.time.now
     if (now - this.lastPaddleHitTime < PADDLE_HIT_COOLDOWN_MS) return
@@ -179,7 +177,9 @@ export default class Game extends Phaser.Scene {
       : paddleObj.x + halfPaddle + halfBall + gap
     ballObj.setPosition(newX, ballObj.y)
 
-    const { x: vx, y: vy } = ballObj.body.velocity
+    const body = ballObj.body
+    if (!body) return
+    const { x: vx, y: vy } = body.velocity
     const speed = Math.max(Math.hypot(vx, vy), BALL_SPEED) * BALL_SPEED_INCREASE
     const offset = Phaser.Math.Clamp((ballObj.y - paddleObj.y) / (PADDLE_HEIGHT / 2), -1, 1)
     const angle = offset * BALL_ANGLE_VARIATION
