@@ -1,4 +1,7 @@
 import { createServer } from 'http'
+import { readFile } from 'fs/promises'
+import { join, extname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { Server as SocketIOServer } from 'socket.io'
 import {
   createInitialState,
@@ -7,7 +10,17 @@ import {
   type Inputs,
 } from '../src/gameState'
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const PORT = Number(process.env.PORT) || 3000
+/** Directory to serve static client from (e.g. dist/). Set STATIC_DIR or runs from repo root with ./dist. */
+const STATIC_DIR = process.env.STATIC_DIR ?? join(__dirname, '..', 'dist')
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.ico': 'image/x-icon',
+  '.json': 'application/json',
+}
 const DT = 1 / 60
 const TICK_MS = 1000 / 60
 
@@ -90,7 +103,36 @@ function cleanupRoom(roomId: string, disconnectedSocket?: import('socket.io').So
   rooms.delete(roomId)
 }
 
-const httpServer = createServer()
+async function serveStatic(
+  req: import('http').IncomingMessage,
+  res: import('http').ServerResponse,
+  staticDir: string
+): Promise<void> {
+  const url = req.url === '/' || !req.url ? '/index.html' : req.url
+  const pathname = url.split('?')[0]
+  const path = resolve(staticDir, pathname === '/' ? 'index.html' : pathname)
+  const staticRoot = resolve(staticDir)
+  if (path !== staticRoot && !path.startsWith(staticRoot + '/')) {
+    res.writeHead(403)
+    res.end()
+    return
+  }
+  try {
+    const data = await readFile(path)
+    const ext = extname(path)
+    const contentType = MIME[ext] ?? 'application/octet-stream'
+    res.writeHead(200, { 'Content-Type': contentType })
+    res.end(data)
+  } catch {
+    res.writeHead(404)
+    res.end()
+  }
+}
+
+const httpServer = createServer(async (req, res) => {
+  if (req.url?.startsWith('/socket.io')) return
+  await serveStatic(req, res, STATIC_DIR)
+})
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: true,

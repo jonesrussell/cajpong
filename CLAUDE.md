@@ -14,6 +14,9 @@ CajPong is a two-player Pong game built with Phaser 3 and Vite.
 - `npm run test` — Run tests in watch mode (Vitest)
 - `npm run test:run` — Run tests once
 - `npm run lint` — Lint with ESLint 9 (flat config)
+- `npm run dev:server` — Run game server (Socket.IO + matchmaking) locally
+- `npm start` — Run game server (for production; serves static client from `dist/` if present)
+- `./deploy.sh [restart]` — Build and rsync to jones@pong.northcloud.biz; use `restart` to npm install + pm2 on host (see DEPLOY.md)
 
 ## Architecture
 

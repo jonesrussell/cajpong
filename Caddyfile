@@ -1,0 +1,7 @@
+# CajPong on pong.northcloud.biz
+# TLS is automatic (Let's Encrypt). App runs on localhost:3000.
+# Socket.IO WebSocket is handled by reverse_proxy by default.
+
+pong.northcloud.biz {
+	reverse_proxy 127.0.0.1:3000
+}
