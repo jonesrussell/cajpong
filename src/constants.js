@@ -9,6 +9,8 @@ export const PADDLE_CLAMP_MARGIN = 70
 
 export const BALL_SIZE = 16
 export const BALL_SPEED = 500
+export const BALL_SPEED_INCREASE = 1.1
+export const PADDLE_HIT_COOLDOWN_MS = 100
 export const BALL_BOUNCE = 1
 export const BALL_ANGLE_VARIATION = 0.3
 

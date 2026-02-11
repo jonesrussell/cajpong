@@ -9,6 +9,8 @@ import {
   BALL_SIZE,
   BALL_BOUNCE,
   BALL_SPEED,
+  BALL_SPEED_INCREASE,
+  PADDLE_HIT_COOLDOWN_MS,
   BALL_ANGLE_VARIATION,
   WALL_HEIGHT,
   SCORE_TEXT_Y,
@@ -48,12 +50,12 @@ export default class Game extends Phaser.Scene {
     const bottomWall = this.add.rectangle(width / 2, height - WALL_HEIGHT / 2, width, WALL_HEIGHT, COLORS.WALL)
     this.physics.add.existing(bottomWall, true)
 
-    // Paddles
-    this.leftPaddle = this.physics.add.image(PADDLE_PADDING, height / 2, 'paddle')
-    this.leftPaddle.setImmovable(true)
+    // Paddles: use static bodies and move by position to avoid ball sticking
+    this.leftPaddle = this.add.image(PADDLE_PADDING, height / 2, 'paddle')
+    this.physics.add.existing(this.leftPaddle, true)
 
-    this.rightPaddle = this.physics.add.image(width - PADDLE_PADDING, height / 2, 'paddle')
-    this.rightPaddle.setImmovable(true)
+    this.rightPaddle = this.add.image(width - PADDLE_PADDING, height / 2, 'paddle')
+    this.physics.add.existing(this.rightPaddle, true)
 
     // Ball
     this.ball = this.physics.add.image(width / 2, height / 2, 'ball')
@@ -63,8 +65,8 @@ export default class Game extends Phaser.Scene {
     // Colliders: ball vs walls and paddles
     this.physics.add.collider(this.ball, topWall)
     this.physics.add.collider(this.ball, bottomWall)
-    this.physics.add.collider(this.ball, this.leftPaddle)
-    this.physics.add.collider(this.ball, this.rightPaddle)
+    this.physics.add.collider(this.ball, this.leftPaddle, this.onBallHitPaddle)
+    this.physics.add.collider(this.ball, this.rightPaddle, this.onBallHitPaddle)
 
     // Score
     this.scoreLeft = 0
@@ -82,9 +84,28 @@ export default class Game extends Phaser.Scene {
 
     // Serve state
     this.serving = false
+    this.lastPaddleHitTime = 0
 
     // Initial serve (random direction)
     this.serve(Phaser.Math.RND.pick([-1, 1]))
+  }
+
+  onBallHitPaddle(ball, paddle) {
+    const now = this.time.now
+    if (now - this.lastPaddleHitTime < PADDLE_HIT_COOLDOWN_MS) return
+    this.lastPaddleHitTime = now
+
+    // Force separation: push ball fully clear of paddle to prevent sticking
+    const halfPaddle = PADDLE_WIDTH / 2
+    const halfBall = BALL_SIZE
+    const gap = 2
+    const newX = ball.x < paddle.x
+      ? paddle.x - halfPaddle - halfBall - gap
+      : paddle.x + halfPaddle + halfBall + gap
+    ball.setPosition(newX, ball.y)
+
+    const { x: vx, y: vy } = ball.body.velocity
+    ball.setVelocity(vx * BALL_SPEED_INCREASE, vy * BALL_SPEED_INCREASE)
   }
 
   serve(direction) {
@@ -101,32 +122,31 @@ export default class Game extends Phaser.Scene {
     })
   }
 
-  update() {
+  update(_, delta) {
     const { width, height } = this.getDimensions()
+    const dt = delta / 1000
 
-    // Left paddle: W / S
+    // Left paddle: W / S (position-based movement for static bodies)
     if (this.keyW.isDown) {
-      this.leftPaddle.setVelocityY(-PADDLE_SPEED)
+      this.leftPaddle.y -= PADDLE_SPEED * dt
     } else if (this.keyS.isDown) {
-      this.leftPaddle.setVelocityY(PADDLE_SPEED)
-    } else {
-      this.leftPaddle.setVelocityY(0)
+      this.leftPaddle.y += PADDLE_SPEED * dt
     }
 
     // Right paddle: Arrow Up / Down
     if (this.cursors.up.isDown) {
-      this.rightPaddle.setVelocityY(-PADDLE_SPEED)
+      this.rightPaddle.y -= PADDLE_SPEED * dt
     } else if (this.cursors.down.isDown) {
-      this.rightPaddle.setVelocityY(PADDLE_SPEED)
-    } else {
-      this.rightPaddle.setVelocityY(0)
+      this.rightPaddle.y += PADDLE_SPEED * dt
     }
 
-    // Clamp paddles to play area (inside walls)
+    // Clamp paddles and sync static bodies
     const minY = PADDLE_CLAMP_MARGIN
     const maxY = height - PADDLE_CLAMP_MARGIN
     this.leftPaddle.y = Phaser.Math.Clamp(this.leftPaddle.y, minY, maxY)
     this.rightPaddle.y = Phaser.Math.Clamp(this.rightPaddle.y, minY, maxY)
+    this.leftPaddle.body.updateFromGameObject()
+    this.rightPaddle.body.updateFromGameObject()
 
     // Goal detection (only when not serving)
     if (!this.serving) {
