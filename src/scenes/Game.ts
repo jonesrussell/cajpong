@@ -51,6 +51,11 @@ export default class Game extends Phaser.Scene {
   private lastState: GameState | null = null
   private gameOverShown = false
 
+  private leftTouchY: number | null = null
+  private rightTouchY: number | null = null
+  private leftPointerId: number | null = null
+  private rightPointerId: number | null = null
+
   constructor() {
     super({ key: 'Game' })
   }
@@ -75,9 +80,15 @@ export default class Game extends Phaser.Scene {
     upKey: Phaser.Input.Keyboard.Key,
     downKey: Phaser.Input.Keyboard.Key,
     dt: number,
-    height: number
+    height: number,
+    touchY?: number | null
   ): void {
-    if (upKey.isDown) {
+    if (touchY != null) {
+      const targetY = Phaser.Math.Clamp(touchY, PADDLE_CLAMP_MARGIN, height - PADDLE_CLAMP_MARGIN)
+      const diff = targetY - paddle.y
+      const maxMove = PADDLE_SPEED * dt
+      paddle.y += Math.abs(diff) < maxMove ? diff : Math.sign(diff) * maxMove
+    } else if (upKey.isDown) {
       paddle.y -= PADDLE_SPEED * dt
     } else if (downKey.isDown) {
       paddle.y += PADDLE_SPEED * dt
@@ -135,10 +146,59 @@ export default class Game extends Phaser.Scene {
     })
     this.scoreText.setOrigin(0.5)
 
-    // Input
+    // Input — keyboard
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W)
     this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S)
+
+    // Input — touch zones (left half / right half of screen)
+    this.leftTouchY = null
+    this.rightTouchY = null
+    this.leftPointerId = null
+    this.rightPointerId = null
+    this.input.addPointer(1) // allow 2 simultaneous touches
+    const midX = width / 2
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.x < midX) {
+        this.leftPointerId = pointer.id
+        this.leftTouchY = pointer.y
+      } else {
+        this.rightPointerId = pointer.id
+        this.rightTouchY = pointer.y
+      }
+    })
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id === this.leftPointerId) {
+        if (pointer.x < midX) {
+          this.leftTouchY = pointer.y
+        } else {
+          this.leftPointerId = null
+          this.leftTouchY = null
+        }
+      } else if (pointer.id === this.rightPointerId) {
+        if (pointer.x >= midX) {
+          this.rightTouchY = pointer.y
+        } else {
+          this.rightPointerId = null
+          this.rightTouchY = null
+        }
+      }
+    })
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id === this.leftPointerId) {
+        this.leftPointerId = null
+        this.leftTouchY = null
+      }
+      if (pointer.id === this.rightPointerId) {
+        this.rightPointerId = null
+        this.rightTouchY = null
+      }
+    })
+    this.events.once('shutdown', () => {
+      this.input.off('pointerdown')
+      this.input.off('pointermove')
+      this.input.off('pointerup')
+    })
 
     if (isOnline) {
       this.lastState = null
@@ -266,8 +326,16 @@ export default class Game extends Phaser.Scene {
     if (isOnline) {
       if (!this.lastState) return
       this.applyState(this.lastState)
-      const up = this.side === 'left' ? this.keyW.isDown : this.cursors.up!.isDown
-      const down = this.side === 'left' ? this.keyS.isDown : this.cursors.down!.isDown
+      const touchY = this.side === 'left' ? this.leftTouchY : this.rightTouchY
+      const paddle = this.side === 'left' ? this.leftPaddle : this.rightPaddle
+      let up: boolean, down: boolean
+      if (touchY != null) {
+        up = touchY < paddle.y
+        down = touchY > paddle.y
+      } else {
+        up = this.side === 'left' ? this.keyW.isDown : this.cursors.up!.isDown
+        down = this.side === 'left' ? this.keyS.isDown : this.cursors.down!.isDown
+      }
       this.socket!.emit('input', { up, down })
       return
     }
@@ -280,8 +348,8 @@ export default class Game extends Phaser.Scene {
 
     const dt = delta / 1000
 
-    this.movePaddle(this.leftPaddle, this.keyW, this.keyS, dt, height)
-    this.movePaddle(this.rightPaddle, this.cursors.up!, this.cursors.down!, dt, height)
+    this.movePaddle(this.leftPaddle, this.keyW, this.keyS, dt, height, this.leftTouchY)
+    this.movePaddle(this.rightPaddle, this.cursors.up!, this.cursors.down!, dt, height, this.rightTouchY)
 
     if (!this.serving) {
       if (this.ball.x < 0) {

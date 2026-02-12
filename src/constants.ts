@@ -25,6 +25,10 @@ export const POINTS_TO_WIN = 11
 export const BALL_PADDLE_SEPARATION = 2
 export const WIN_DISPLAY_DELAY_MS = 2500
 
+export const BUTTON_WIDTH = 180
+export const BUTTON_HEIGHT = 50
+export const BUTTON_COLOR = 0x333333
+
 export const COLORS = {
   WHITE: 0xffffff,
   WALL: 0x444444,
