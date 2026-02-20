@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flame/camera.dart';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/painting.dart';
 import 'package:cajpong_flutter/game/components/ball.dart';
 import 'package:cajpong_flutter/game/components/paddle.dart';
 import 'package:cajpong_flutter/game/components/touch_zone.dart';
@@ -55,7 +55,7 @@ class PongGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    camera.viewport = FixedResolutionViewport(Vector2(width, height));
+    camera.viewport = FixedResolutionViewport(resolution: Vector2(width, height));
     leftPaddle = Paddle.left()
       ..position = Vector2(paddlePadding, height / 2)
       ..anchor = Anchor.center;

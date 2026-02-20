@@ -16,7 +16,7 @@ class TouchZone extends PositionComponent with DragCallbacks {
 
   @override
   void onDragUpdate(DragUpdateEvent event) {
-    onTargetY(event.localPosition.y);
+    onTargetY(event.localEndPosition.y);
   }
 
   @override
