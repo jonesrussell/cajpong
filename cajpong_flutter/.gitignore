@@ -1,0 +1,16 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+*.ipr
+*.iws
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
