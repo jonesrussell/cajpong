@@ -1,6 +1,6 @@
 /**
  * Pure game state and step for CajPong. Used by the server as the authoritative
- * simulation and by the client for types. All time is in seconds (dt, gameTime, etc.).
+ * simulation. All time is in seconds (dt, gameTime, etc.).
  */
 
 import {
@@ -32,15 +32,11 @@ export interface GameState {
   scoreLeft: number
   scoreRight: number
   serving: boolean
-  /** -1 or 1 when serving, null otherwise */
   serveDirection: number | null
-  /** Seconds remaining in serve delay; 0 when not serving */
   serveCountdownRemaining: number
   gameOver: boolean
   winner: 'left' | 'right' | null
-  /** Total game time in seconds (for cooldowns and serve) */
   gameTime: number
-  /** Game time in seconds of last paddle hit (for cooldown) */
   lastPaddleHitTime: number
 }
 
@@ -53,7 +49,6 @@ const PADDLE_HIT_COOLDOWN_S = PADDLE_HIT_COOLDOWN_MS / 1000
 const SERVE_DELAY_S = SERVE_DELAY_MS / 1000
 const HALF_PADDLE = PADDLE_WIDTH / 2
 const HALF_PADDLE_H = PADDLE_HEIGHT / 2
-const MIN_Y = PADDLE_CLAMP_MARGIN
 const MAX_Y = HEIGHT - PADDLE_CLAMP_MARGIN
 const TOP_WALL = WALL_HEIGHT / 2
 const BOTTOM_WALL = HEIGHT - WALL_HEIGHT / 2
@@ -61,6 +56,20 @@ const BOTTOM_WALL = HEIGHT - WALL_HEIGHT / 2
 const DEFAULT_INPUTS: Inputs = {
   left: { up: false, down: false },
   right: { up: false, down: false },
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function movePaddleFromInput(y: number, up: boolean, down: boolean, dt: number): number {
+  if (up) y -= PADDLE_SPEED * dt
+  else if (down) y += PADDLE_SPEED * dt
+  return clamp(y, PADDLE_CLAMP_MARGIN, MAX_Y)
+}
+
+function randomServeAngle(): number {
+  return (Math.random() * 2 - 1) * BALL_ANGLE_VARIATION
 }
 
 export function createInitialState(serveDirection?: 1 | -1): GameState {
@@ -84,26 +93,6 @@ export function createInitialState(serveDirection?: 1 | -1): GameState {
   }
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-function movePaddleFromInput(y: number, up: boolean, down: boolean, dt: number): number {
-  if (up) y -= PADDLE_SPEED * dt
-  else if (down) y += PADDLE_SPEED * dt
-  return clamp(y, MIN_Y, MAX_Y)
-}
-
-/** Angle in radians for serve; varies in [-BALL_ANGLE_VARIATION, BALL_ANGLE_VARIATION]. */
-function randomServeAngle(): number {
-  return (Math.random() * 2 - 1) * BALL_ANGLE_VARIATION
-}
-
-/**
- * Pure step. dt is in seconds.
- * Returns a new state; does not mutate.
- * Optional nextServeAngle (radians) makes serve launch deterministic for tests.
- */
 export function step(
   state: GameState,
   inputs: Inputs,
@@ -115,8 +104,6 @@ export function step(
   const s: GameState = { ...state }
 
   s.gameTime = s.gameTime + dt
-
-  // Paddle movement
   s.leftPaddleY = movePaddleFromInput(s.leftPaddleY, left.up, left.down, dt)
   s.rightPaddleY = movePaddleFromInput(s.rightPaddleY, right.up, right.down, dt)
 
@@ -141,11 +128,9 @@ export function step(
     }
   }
 
-  // Move ball
   s.ballX = s.ballX + s.ballVx * dt
   s.ballY = s.ballY + s.ballVy * dt
 
-  // Goals (before paddle so we don't count a hit when ball is past line)
   if (s.ballX < 0) {
     s.scoreRight++
     s.ballX = WIDTH / 2
@@ -181,7 +166,6 @@ export function step(
     return s
   }
 
-  // Walls
   if (s.ballY - BALL_SIZE <= TOP_WALL) {
     s.ballY = TOP_WALL + BALL_SIZE
     s.ballVy = Math.abs(s.ballVy)
@@ -191,9 +175,7 @@ export function step(
     s.ballVy = -Math.abs(s.ballVy)
   }
 
-  // Paddle collision (cooldown in seconds)
   const cooldownOk = s.gameTime - s.lastPaddleHitTime >= PADDLE_HIT_COOLDOWN_S
-
   const leftPaddleRight = PADDLE_PADDING + HALF_PADDLE
   const leftPaddleLeft = PADDLE_PADDING - HALF_PADDLE
   const rightPaddleLeft = WIDTH - PADDLE_PADDING - HALF_PADDLE
@@ -209,8 +191,7 @@ export function step(
 
   if (hitLeftPaddle) {
     s.lastPaddleHitTime = s.gameTime
-    const gap = BALL_PADDLE_SEPARATION
-    s.ballX = leftPaddleLeft - BALL_SIZE - gap
+    s.ballX = leftPaddleLeft - BALL_SIZE - BALL_PADDLE_SEPARATION
     const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
     const offset = clamp((s.ballY - s.leftPaddleY) / HALF_PADDLE_H, -1, 1)
     const angle = offset * BALL_ANGLE_VARIATION
@@ -229,8 +210,7 @@ export function step(
 
   if (hitRightPaddle) {
     s.lastPaddleHitTime = s.gameTime
-    const gap = BALL_PADDLE_SEPARATION
-    s.ballX = rightPaddleRight + BALL_SIZE + gap
+    s.ballX = rightPaddleRight + BALL_SIZE + BALL_PADDLE_SEPARATION
     const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
     const offset = clamp((s.ballY - s.rightPaddleY) / HALF_PADDLE_H, -1, 1)
     const angle = offset * BALL_ANGLE_VARIATION

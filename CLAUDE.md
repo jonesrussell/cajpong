@@ -4,37 +4,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CajPong is a two-player Pong game built with Phaser 3 and Vite.
+CajPong is a two-player Pong game built with **Flutter + Flame**. The client runs on iOS, Android, and Web. A **Node.js Socket.IO server** provides matchmaking and authoritative game state for online play.
 
 ## Commands
 
-- `npm run dev` — Start Vite dev server with hot reload
-- `npm run build` — Production build to `dist/`
-- `npm run typecheck` — Type-check with TypeScript (no emit)
-- `npm run test` — Run tests in watch mode (Vitest)
-- `npm run test:run` — Run tests once
-- `npm run lint` — Lint with ESLint 9 (flat config)
+**Flutter client** (from `cajpong_flutter/`):
+
+- `flutter pub get` — Resolve dependencies
+- `flutter run` — Run on default device (use `-d chrome` for web, `-d linux` for desktop)
+- `flutter build web` — Production web build to `cajpong_flutter/build/web/`
+- `flutter build apk` / `flutter build ios` — Mobile builds
+
+**Server** (from repo root):
+
 - `npm run dev:server` — Run game server (Socket.IO + matchmaking) locally
-- `npm start` — Run game server (for production; serves static client from `dist/` if present)
-- `./deploy.sh [restart]` — Build and rsync to jones@pong.northcloud.biz; use `restart` to npm install + pm2 on host (see DEPLOY.md)
+- `npm start` — Run game server (production; serves static client from `cajpong_flutter/build/web` if present)
+- `npm run lint` — Lint server with ESLint 9 (flat config)
+
+**Deploy:**
+
+- `./deploy.sh [restart]` — Build Flutter web, rsync to jones@pong.northcloud.biz; use `restart` to npm install + pm2 on host (see DEPLOY.md)
 
 ## Architecture
 
-**Entry point:** `index.html` loads `src/main.ts`, which creates the Phaser game instance.
+**Client:** `cajpong_flutter/` — Single Flame game (`PongGame`), components (paddles, ball, walls, touch zones), overlays for menu/matchmaking/game over. Local play runs pure Dart game step; online play receives `game_state` from server and sends `input` (up/down). Two-thumb touch: left half = left paddle, right half = right paddle.
 
-**Key files:**
-- `src/main.ts` — Phaser.Game config (arcade physics, no gravity, scale-to-fit)
-- `src/constants.ts` — All game tuning values (dimensions, speeds, sizes, colors)
-- `src/scenes/Game.ts` — Single scene containing all gameplay logic
+**Server:** `server/index.ts` — Socket.IO matchmaking and 60 Hz room tick. Game logic in `server/game/` (gameState.ts, gameLogic.ts, constants.ts). Serves static files from `cajpong_flutter/build/web` when present.
 
-The project uses **TypeScript**. Run `npm run typecheck` to type-check without building.
+**Protocol:** `find_match` → `matched` (side, roomId) → client sends `input` (up, down); server broadcasts `game_state` (state, tick), `opponent_left` on disconnect.
 
-**Tests:** Vitest in `src/**/*.test.ts`. Pure game logic lives in `src/gameLogic.ts` (e.g. `getWinner`) and is used by the Game scene so win logic can be tested without Phaser.
+## Key paths
 
-**Physics approach:** Paddles use static bodies moved by position (`updateFromGameObject()`) each frame to prevent ball-sticking issues. The ball uses a dynamic body with arcade physics colliders against walls and paddles.
+- `cajpong_flutter/lib/game/pong_game.dart` — Root Flame game
+- `cajpong_flutter/lib/game/game_loop.dart` — Pure step/getWinner (matches server logic)
+- `cajpong_flutter/lib/services/pong_socket_service.dart` — Socket.IO client
+- `server/index.ts` — HTTP + Socket.IO server
+- `server/game/` — Server-side game state and step
 
-**Controls:** Left paddle: W/S keys. Right paddle: Arrow Up/Down.
+## Server URL
 
-**Ball behavior:** On paddle hit, ball speed increases by `BALL_SPEED_INCREASE` multiplier. Bounce angle varies based on where the ball hits the paddle (`BALL_ANGLE_VARIATION`). A cooldown (`PADDLE_HIT_COOLDOWN_MS`) prevents double-hits.
-
-**Textures:** Generated procedurally at runtime via `this.make.graphics()` — no external assets.
+Flutter app uses `--dart-define=SERVER_URL=...` at build time (default `http://localhost:3000`). Deploy sets this to the production URL.

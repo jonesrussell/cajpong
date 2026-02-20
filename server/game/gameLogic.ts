@@ -1,8 +1,5 @@
 import { POINTS_TO_WIN } from './constants'
 
-/**
- * Returns which side has won, or null if neither has reached the win threshold.
- */
 export function getWinner(
   scoreLeft: number,
   scoreRight: number

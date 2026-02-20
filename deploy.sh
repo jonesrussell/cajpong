@@ -3,16 +3,18 @@
 # Usage: ./deploy.sh [restart]
 #   restart - after syncing, SSH and run npm install then pm2 restart cajpong (or pm2 start)
 #
-# Build the client with VITE_SERVER_URL so the app connects to the deployed server.
-# Set DEPLOY_HOST, DEPLOY_PATH, or VITE_SERVER_URL to override defaults.
+# Builds the Flutter web client with SERVER_URL so the app connects to the deployed server.
+# Set DEPLOY_HOST, DEPLOY_PATH, or SERVER_URL to override defaults.
 
 set -e
 HOST="${DEPLOY_HOST:-jones@pong.northcloud.biz}"
 PATH_ON_HOST="${DEPLOY_PATH:-~/cajpong}"
-PUBLIC_URL="${VITE_SERVER_URL:-https://pong.northcloud.biz}"
+PUBLIC_URL="${SERVER_URL:-https://pong.northcloud.biz}"
 
-echo "Building client with VITE_SERVER_URL=$PUBLIC_URL"
-VITE_SERVER_URL="$PUBLIC_URL" npm run build
+echo "Building Flutter web client with SERVER_URL=$PUBLIC_URL"
+cd cajpong_flutter
+flutter build web --dart-define=SERVER_URL="$PUBLIC_URL"
+cd ..
 
 echo "Syncing to $HOST:$PATH_ON_HOST"
 rsync -avz \
@@ -20,6 +22,7 @@ rsync -avz \
   --exclude .git \
   --exclude .env \
   --exclude '*.log' \
+  --exclude cajpong_flutter/.dart_tool \
   . \
   "$HOST:$PATH_ON_HOST/"
 

@@ -8,12 +8,12 @@ import {
   step,
   type GameState,
   type Inputs,
-} from '../src/gameState'
+} from './game/gameState'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const PORT = Number(process.env.PORT) || 3000
-/** Directory to serve static client from (e.g. dist/). Set STATIC_DIR or runs from repo root with ./dist. */
-const STATIC_DIR = process.env.STATIC_DIR ?? join(__dirname, '..', 'dist')
+/** Directory to serve static client from (Flutter web build). Set STATIC_DIR to override. */
+const STATIC_DIR = process.env.STATIC_DIR ?? join(__dirname, '..', 'cajpong_flutter', 'build', 'web')
 const MIME: Record<string, string> = {
   '.html': 'text/html',
   '.js': 'application/javascript',

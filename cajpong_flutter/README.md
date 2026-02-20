@@ -1,11 +1,11 @@
 # CajPong Flutter
 
-Two-player Pong built with Flutter and [Flame](https://docs.flame-engine.org/). Supports local two-thumb play and online multiplayer via the existing Node.js Socket.IO server.
+Two-player Pong built with Flutter and [Flame](https://docs.flame-engine.org/). Supports local two-thumb play and online multiplayer via the Node.js Socket.IO server in the repo root (`../server`).
 
 ## Requirements
 
 - Flutter SDK (stable channel)
-- For online play: the CajPong game server running (see parent repo `../server`)
+- For online play: run the game server from the repo root with `npm run dev:server`
 
 ## Project structure
 
