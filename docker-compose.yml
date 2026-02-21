@@ -1,0 +1,9 @@
+services:
+  app:
+    image: ghcr.io/jonesrussell/cajpong:${IMAGE_TAG}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000

@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Flutter build
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: |
+          cd cajpong_flutter
+          flutter pub get
+          flutter build web --dart-define=SERVER_URL=https://pong.northcloud.biz
+
+      # Docker build & push
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/jonesrussell/cajpong:latest
+            ghcr.io/jonesrussell/cajpong:${{ github.sha }}
+
+      # Deploy via SSH: write .env with SHA, then pull & up
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/cajpong
+            echo "IMAGE_TAG=${{ github.sha }}" > .env
+            docker compose pull
+            docker compose up -d

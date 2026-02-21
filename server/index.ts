@@ -131,6 +131,12 @@ async function serveStatic(
 }
 
 const httpServer = createServer(async (req, res) => {
+  const pathname = req.url?.split('?')[0]
+  if (pathname === '/health') {
+    res.writeHead(200)
+    res.end()
+    return
+  }
   if (req.url?.startsWith('/socket.io')) return
   await serveStatic(req, res, STATIC_DIR)
 })

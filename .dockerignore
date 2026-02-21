@@ -1,0 +1,23 @@
+# Dependencies and tooling
+node_modules
+.git
+.env
+*.log
+
+# Flutter: exclude everything except the web build (CI copies build/web into context)
+cajpong_flutter/*
+!cajpong_flutter/build
+cajpong_flutter/build/*
+!cajpong_flutter/build/web
+
+# Flutter tool caches
+cajpong_flutter/.dart_tool
+cajpong_flutter/.pub-cache
+cajpong_flutter/.packages
+
+# CI and docs (not needed in image)
+.github
+DEPLOY.md
+deploy.sh
+*.md
+CLAUDE.md

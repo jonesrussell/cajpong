@@ -21,3 +21,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Deploy key (used only for gh secret set; never commit)
+.deploy-keys/
