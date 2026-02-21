@@ -20,27 +20,107 @@ class _GameOverOverlayState extends State<_GameOverOverlay> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(
-      Duration(milliseconds: winDisplayDelayMs),
-      () => widget.game.showMenu(),
-    );
+    if (!widget.game.lastGameWasOnline) {
+      Future.delayed(
+        const Duration(milliseconds: winDisplayDelayMs),
+        () => widget.game.showMenu(),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final winner = widget.game.winner;
+    final game = widget.game;
+    final winner = game.winner;
     final message = winner == null
         ? 'Opponent disconnected'
         : winner == Side.left
             ? 'Left wins!'
             : 'Right wins!';
+    final d = game.dimensions;
+    final fontSize = d.scale * 56;
+
+    if (game.lastGameWasOnline) {
+      return Container(
+        color: Colors.black54,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                message,
+                style: TextStyle(color: Colors.white, fontSize: fontSize),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: d.scale * 32),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _GameOverButton(
+                    label: 'Find new match',
+                    onTap: () => game.showMatchmaking(),
+                    width: d.buttonWidth,
+                    height: d.buttonHeight,
+                  ),
+                  SizedBox(width: d.scale * 24),
+                  _GameOverButton(
+                    label: 'Menu',
+                    onTap: () => game.showMenu(),
+                    width: d.buttonWidth,
+                    height: d.buttonHeight,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       color: Colors.black54,
       child: Center(
         child: Text(
           message,
-          style: const TextStyle(color: Colors.white, fontSize: 56),
+          style: TextStyle(color: Colors.white, fontSize: fontSize),
           textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _GameOverButton extends StatelessWidget {
+  const _GameOverButton({
+    required this.label,
+    required this.onTap,
+    required this.width,
+    required this.height,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF333333),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: height * 0.48,
+              ),
+            ),
+          ),
         ),
       ),
     );

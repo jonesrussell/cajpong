@@ -1,38 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:cajpong_flutter/game/pong_game.dart';
-import 'package:cajpong_flutter/utils/constants.dart';
 
 Widget buildMenuOverlay(BuildContext context, PongGame game) {
+  final d = game.dimensions;
   return Container(
     color: const Color(0xFF111111),
     child: Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'CajPong',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 64,
+              fontSize: d.scale * 64,
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: d.scale * 24),
+          Text(
             'Local  |  Online',
-            style: TextStyle(color: Colors.white, fontSize: 24),
+            style: TextStyle(color: Colors.white, fontSize: d.scale * 24),
           ),
-          const SizedBox(height: 48),
+          SizedBox(height: d.scale * 48),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               _MenuButton(
                 label: 'Local',
                 onTap: () => game.startLocal(),
+                width: d.buttonWidth,
+                height: d.buttonHeight,
               ),
-              const SizedBox(width: 40),
+              SizedBox(width: d.scale * 40),
               _MenuButton(
                 label: 'Online',
                 onTap: () => game.showMatchmaking(),
+                width: d.buttonWidth,
+                height: d.buttonHeight,
               ),
             ],
           ),
@@ -43,10 +47,17 @@ Widget buildMenuOverlay(BuildContext context, PongGame game) {
 }
 
 class _MenuButton extends StatelessWidget {
-  const _MenuButton({required this.label, required this.onTap});
+  const _MenuButton({
+    required this.label,
+    required this.onTap,
+    required this.width,
+    required this.height,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +66,15 @@ class _MenuButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          width: buttonWidth,
-          height: buttonHeight,
+          width: width,
+          height: height,
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(color: Colors.white, fontSize: 24),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: height * 0.48,
+              ),
             ),
           ),
         ),

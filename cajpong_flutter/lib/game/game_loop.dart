@@ -13,23 +13,16 @@ double _clamp(double value, double min, double max) {
 }
 
 double _movePaddleFromInput(
-    double y, bool up, bool down, double dt) {
+    double y, bool up, bool down, double dt, GameDimensions d) {
   if (up) y -= paddleSpeed * dt;
   if (down) y += paddleSpeed * dt;
-  return _clamp(y, paddleClampMargin, height - paddleClampMargin);
+  return _clamp(y, d.paddleClampMargin, d.height - d.paddleClampMargin);
 }
 
 double _randomServeAngle() {
   return (2 * (DateTime.now().millisecondsSinceEpoch % 1000) / 1000 - 1) *
       ballAngleVariation;
 }
-
-const double _paddleHitCooldownS = paddleHitCooldownMs / 1000.0;
-const double _serveDelayS = serveDelayMs / 1000.0;
-const double _halfPaddle = paddleWidth / 2;
-const double _halfPaddleH = paddleHeight / 2;
-const double _topWall = wallHeight / 2;
-const double _bottomWall = height - wallHeight / 2;
 
 /// Returns which side has won, or null if neither has reached the win threshold.
 Side? getWinner(int scoreLeft, int scoreRight) {
@@ -39,21 +32,21 @@ Side? getWinner(int scoreLeft, int scoreRight) {
 }
 
 /// Create initial state for a new game. [serveDirection] 1 or -1; if null, random.
-GameState createInitialState([int? serveDirection]) {
+GameState createInitialState(GameDimensions d, [int? serveDirection]) {
   final direction = serveDirection ??
       (DateTime.now().millisecondsSinceEpoch.isEven ? 1 : -1);
   return GameState(
-    ballX: width / 2,
-    ballY: height / 2,
+    ballX: d.width / 2,
+    ballY: d.height / 2,
     ballVx: 0,
     ballVy: 0,
-    leftPaddleY: height / 2,
-    rightPaddleY: height / 2,
+    leftPaddleY: d.height / 2,
+    rightPaddleY: d.height / 2,
     scoreLeft: 0,
     scoreRight: 0,
     serving: true,
     serveDirection: direction,
-    serveCountdownRemaining: _serveDelayS,
+    serveCountdownRemaining: serveDelayMs / 1000.0,
     gameOver: false,
     winner: null,
     gameTime: 0,
@@ -63,16 +56,19 @@ GameState createInitialState([int? serveDirection]) {
 
 /// Pure step. [dt] in seconds. Returns new state (does not mutate).
 /// [nextServeAngle] in radians makes serve launch deterministic for tests.
-GameState step(GameState state, Inputs inputs, double dt,
+GameState step(GameState state, Inputs inputs, double dt, GameDimensions d,
     {double? nextServeAngle}) {
+  const serveDelayS = serveDelayMs / 1000.0;
+  const paddleHitCooldownS = paddleHitCooldownMs / 1000.0;
+
   final left = inputs.left;
   final right = inputs.right;
   GameState s = state.copyWith(
     gameTime: state.gameTime + dt,
     leftPaddleY: _movePaddleFromInput(
-        state.leftPaddleY, left.up, left.down, dt),
+        state.leftPaddleY, left.up, left.down, dt, d),
     rightPaddleY: _movePaddleFromInput(
-        state.rightPaddleY, right.up, right.down, dt),
+        state.rightPaddleY, right.up, right.down, dt, d),
   );
 
   if (s.gameOver) return s;
@@ -91,8 +87,8 @@ GameState step(GameState state, Inputs inputs, double dt,
       );
     }
     return s.copyWith(
-      ballX: width / 2,
-      ballY: height / 2,
+      ballX: d.width / 2,
+      ballY: d.height / 2,
       ballVx: 0,
       ballVy: 0,
       serveCountdownRemaining: remaining,
@@ -104,11 +100,11 @@ GameState step(GameState state, Inputs inputs, double dt,
 
   // Wall bounces (top/bottom)
   double nvy = s.ballVy;
-  if (ny - ballSize <= _topWall) {
-    ny = _topWall + ballSize;
+  if (ny - d.ballSize <= d.topWall) {
+    ny = d.topWall + d.ballSize;
     nvy = s.ballVy.abs();
-  } else if (ny + ballSize >= _bottomWall) {
-    ny = _bottomWall - ballSize;
+  } else if (ny + d.ballSize >= d.bottomWall) {
+    ny = d.bottomWall - d.ballSize;
     nvy = -s.ballVy.abs();
   }
 
@@ -116,8 +112,8 @@ GameState step(GameState state, Inputs inputs, double dt,
     int scoreRight = s.scoreRight + 1;
     Side? winner = getWinner(s.scoreLeft, scoreRight);
     return s.copyWith(
-      ballX: width / 2,
-      ballY: height / 2,
+      ballX: d.width / 2,
+      ballY: d.height / 2,
       ballVx: 0,
       ballVy: 0,
       scoreRight: scoreRight,
@@ -125,15 +121,15 @@ GameState step(GameState state, Inputs inputs, double dt,
       winner: winner,
       serving: winner == null,
       serveDirection: winner == null ? -1 : null,
-      serveCountdownRemaining: winner == null ? _serveDelayS : 0,
+      serveCountdownRemaining: winner == null ? serveDelayS : 0,
     );
   }
-  if (nx > width) {
+  if (nx > d.width) {
     int scoreLeft = s.scoreLeft + 1;
     Side? winner = getWinner(scoreLeft, s.scoreRight);
     return s.copyWith(
-      ballX: width / 2,
-      ballY: height / 2,
+      ballX: d.width / 2,
+      ballY: d.height / 2,
       ballVx: 0,
       ballVy: 0,
       scoreLeft: scoreLeft,
@@ -141,33 +137,33 @@ GameState step(GameState state, Inputs inputs, double dt,
       winner: winner,
       serving: winner == null,
       serveDirection: winner == null ? 1 : null,
-      serveCountdownRemaining: winner == null ? _serveDelayS : 0,
+      serveCountdownRemaining: winner == null ? serveDelayS : 0,
     );
   }
 
   final cooldownOk =
-      s.gameTime - s.lastPaddleHitTime >= _paddleHitCooldownS;
-  final leftPaddleRight = paddlePadding + _halfPaddle;
-  final leftPaddleLeft = paddlePadding - _halfPaddle;
-  final rightPaddleLeft = width - paddlePadding - _halfPaddle;
-  final rightPaddleRight = width - paddlePadding + _halfPaddle;
+      s.gameTime - s.lastPaddleHitTime >= paddleHitCooldownS;
+  final leftPaddleRight = d.paddlePadding + d.halfPaddle;
+  final leftPaddleLeft = d.paddlePadding - d.halfPaddle;
+  final rightPaddleLeft = d.width - d.paddlePadding - d.halfPaddle;
+  final rightPaddleRight = d.width - d.paddlePadding + d.halfPaddle;
 
   final hitLeftPaddle = cooldownOk &&
       s.ballVx < 0 &&
-      nx - ballSize <= leftPaddleRight &&
-      nx + ballSize >= leftPaddleLeft &&
-      ny >= s.leftPaddleY - _halfPaddleH &&
-      ny <= s.leftPaddleY + _halfPaddleH;
+      nx - d.ballSize <= leftPaddleRight &&
+      nx + d.ballSize >= leftPaddleLeft &&
+      ny >= s.leftPaddleY - d.halfPaddleH &&
+      ny <= s.leftPaddleY + d.halfPaddleH;
 
   if (hitLeftPaddle) {
     final currentSpeed = math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
     final actualSpeed =
         math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
     final offset = _clamp(
-        (ny - s.leftPaddleY) / _halfPaddleH, -1.0, 1.0);
+        (ny - s.leftPaddleY) / d.halfPaddleH, -1.0, 1.0);
     final angle = offset * ballAngleVariation;
     return s.copyWith(
-      ballX: leftPaddleLeft - ballSize - ballPaddleSeparation,
+      ballX: leftPaddleLeft - d.ballSize - d.ballPaddleSeparation,
       ballY: ny,
       ballVx: actualSpeed * math.cos(angle),
       ballVy: actualSpeed * math.sin(angle),
@@ -177,20 +173,20 @@ GameState step(GameState state, Inputs inputs, double dt,
 
   final hitRightPaddle = cooldownOk &&
       s.ballVx > 0 &&
-      nx - ballSize <= rightPaddleRight &&
-      nx + ballSize >= rightPaddleLeft &&
-      ny >= s.rightPaddleY - _halfPaddleH &&
-      ny <= s.rightPaddleY + _halfPaddleH;
+      nx - d.ballSize <= rightPaddleRight &&
+      nx + d.ballSize >= rightPaddleLeft &&
+      ny >= s.rightPaddleY - d.halfPaddleH &&
+      ny <= s.rightPaddleY + d.halfPaddleH;
 
   if (hitRightPaddle) {
     final currentSpeed = math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
     final actualSpeed =
         math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
     final offset = _clamp(
-        (ny - s.rightPaddleY) / _halfPaddleH, -1.0, 1.0);
+        (ny - s.rightPaddleY) / d.halfPaddleH, -1.0, 1.0);
     final angle = offset * ballAngleVariation;
     return s.copyWith(
-      ballX: rightPaddleRight + ballSize + ballPaddleSeparation,
+      ballX: rightPaddleRight + d.ballSize + d.ballPaddleSeparation,
       ballY: ny,
       ballVx: -actualSpeed * math.cos(angle),
       ballVy: actualSpeed * math.sin(angle),

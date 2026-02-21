@@ -24,11 +24,13 @@ class PongGame extends FlameGame {
   StreamSubscription<GameState>? _gameStateSub;
   StreamSubscription<void>? _disconnectSub;
 
-  GameMode get mode => _mode;
+  /// Current game dimensions (canvas size); updated in onGameResize.
+  GameDimensions get dimensions => _dimensions;
+  late GameDimensions _dimensions;
+
   GameMode _mode = GameMode.menu;
-  set mode(GameMode value) {
-    _mode = value;
-  }
+  GameMode get mode => _mode;
+  set mode(GameMode value) => _mode = value;
 
   Side? get winner => _winner;
   Side? _winner;
@@ -48,6 +50,10 @@ class PongGame extends FlameGame {
   late Paddle rightPaddle;
   late Ball ball;
   late TextComponent scoreText;
+  late Wall topWall;
+  late Wall bottomWall;
+  late TouchZone leftTouchZone;
+  late TouchZone rightTouchZone;
 
   double? _leftTargetY;
   double? _rightTargetY;
@@ -55,56 +61,95 @@ class PongGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    camera.viewport = FixedResolutionViewport(resolution: Vector2(width, height));
+    camera.viewport = MaxViewport();
+    _dimensions = GameDimensions(refWidth, refHeight);
+    _createComponents();
+    _layoutFromDimensions(_dimensions);
+    overlays.add('menu');
+  }
+
+  void _createComponents() {
     leftPaddle = Paddle.left()
-      ..position = Vector2(paddlePadding, height / 2)
       ..anchor = Anchor.center;
     rightPaddle = Paddle.right()
-      ..position = Vector2(width - paddlePadding, height / 2)
       ..anchor = Anchor.center;
     ball = Ball()
-      ..position = Vector2(width / 2, height / 2)
       ..anchor = Anchor.center;
 
-    add(Wall(isTop: true));
-    add(Wall(isTop: false));
+    topWall = Wall(isTop: true);
+    bottomWall = Wall(isTop: false);
+
+    add(topWall);
+    add(bottomWall);
     add(leftPaddle);
     add(rightPaddle);
     add(ball);
 
     scoreText = TextComponent(
       text: '0 - 0',
-      position: Vector2(width / 2, scoreTextY),
       anchor: Anchor.center,
     )..textRenderer = TextPaint(
         style: TextStyle(
           color: const Color(0xFFFFFFFF),
-          fontSize: scoreFontSize,
+          fontSize: _dimensions.scoreFontSize,
         ),
       );
     add(scoreText);
 
-    final halfWidth = width / 2;
-    final minY = paddleClampMargin;
-    final maxY = height - paddleClampMargin;
-    add(TouchZone(
+    final d = _dimensions;
+    final minY = d.paddleClampMargin;
+    final maxY = d.height - d.paddleClampMargin;
+    leftTouchZone = TouchZone(
       isLeft: true,
       onTargetY: (y) =>
           _leftTargetY = y == null ? null : y.clamp(minY, maxY).toDouble(),
     )
-      ..position = Vector2.zero()
-      ..size = Vector2(halfWidth, height)
-      ..anchor = Anchor.topLeft);
-    add(TouchZone(
+      ..anchor = Anchor.topLeft;
+    rightTouchZone = TouchZone(
       isLeft: false,
       onTargetY: (y) =>
           _rightTargetY = y == null ? null : y.clamp(minY, maxY).toDouble(),
     )
-      ..position = Vector2(halfWidth, 0)
-      ..size = Vector2(halfWidth, height)
-      ..anchor = Anchor.topLeft);
+      ..anchor = Anchor.topLeft;
+    add(leftTouchZone);
+    add(rightTouchZone);
+  }
 
-    overlays.add('menu');
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    if (size.x <= 0 || size.y <= 0) return;
+    _dimensions = GameDimensions(size.x, size.y);
+    _layoutFromDimensions(_dimensions);
+  }
+
+  void _layoutFromDimensions(GameDimensions d) {
+    leftPaddle.size.setValues(d.paddleWidth, d.paddleHeight);
+    leftPaddle.position.setValues(d.paddlePadding, d.height / 2);
+
+    rightPaddle.size.setValues(d.paddleWidth, d.paddleHeight);
+    rightPaddle.position.setValues(d.width - d.paddlePadding, d.height / 2);
+
+    ball.size.setValues(d.ballSize * 2, d.ballSize * 2);
+    ball.position.setValues(d.width / 2, d.height / 2);
+
+    topWall.size.setValues(d.width, d.wallHeight);
+    topWall.position.setValues(0, 0);
+    bottomWall.size.setValues(d.width, d.wallHeight);
+    bottomWall.position.setValues(0, d.height - d.wallHeight);
+
+    scoreText.position.setValues(d.width / 2, d.scoreTextY);
+    scoreText.textRenderer = TextPaint(
+      style: TextStyle(
+        color: const Color(0xFFFFFFFF),
+        fontSize: d.scoreFontSize,
+      ),
+    );
+
+    leftTouchZone.position.setValues(0, 0);
+    leftTouchZone.size.setValues(d.width / 2, d.height);
+    rightTouchZone.position.setValues(d.width / 2, 0);
+    rightTouchZone.size.setValues(d.width / 2, d.height);
   }
 
   @override
@@ -113,7 +158,7 @@ class PongGame extends FlameGame {
     if (_mode == GameMode.localPlaying && _currentState != null) {
       _updateLocal(dt);
     } else if (_mode == GameMode.onlinePlaying) {
-      if (_currentState != null) _applyState(_currentState!);
+      if (_currentState != null) _applyState(_currentState!, fromServer: true);
       _sendOnlineInput();
     }
   }
@@ -131,19 +176,16 @@ class PongGame extends FlameGame {
 
   void _updateLocal(double dt) {
     final state = _currentState!;
-    final leftUp = _leftTargetY != null && _leftTargetY! < leftPaddle.position.y;
-    final leftDown =
-        _leftTargetY != null && _leftTargetY! > leftPaddle.position.y;
-    final rightUp =
-        _rightTargetY != null && _rightTargetY! < rightPaddle.position.y;
-    final rightDown =
-        _rightTargetY != null && _rightTargetY! > rightPaddle.position.y;
+    final leftUp = _leftTargetY?.compareTo(leftPaddle.position.y) == -1;
+    final leftDown = _leftTargetY?.compareTo(leftPaddle.position.y) == 1;
+    final rightUp = _rightTargetY?.compareTo(rightPaddle.position.y) == -1;
+    final rightDown = _rightTargetY?.compareTo(rightPaddle.position.y) == 1;
     final inputs = Inputs(
       left: PaddleInput(up: leftUp, down: leftDown),
       right: PaddleInput(up: rightUp, down: rightDown),
     );
-    _currentState = step(state, inputs, dt);
-    _applyState(_currentState!);
+    _currentState = step(state, inputs, dt, _dimensions);
+    _applyState(_currentState!, fromServer: false);
     if (_currentState!.gameOver && _currentState!.winner != null) {
       _winner = _currentState!.winner;
       _mode = GameMode.gameOver;
@@ -151,24 +193,39 @@ class PongGame extends FlameGame {
     }
   }
 
-  void _applyState(GameState state) {
-    ball.position.setValues(state.ballX, state.ballY);
-    leftPaddle.position.y = state.leftPaddleY;
-    rightPaddle.position.y = state.rightPaddleY;
+  void _applyState(GameState state, {required bool fromServer}) {
+    if (fromServer) {
+      ball.position.setValues(
+        _dimensions.serverXToClient(state.ballX),
+        _dimensions.serverYToClient(state.ballY),
+      );
+      leftPaddle.position.y = _dimensions.serverYToClient(state.leftPaddleY);
+      rightPaddle.position.y = _dimensions.serverYToClient(state.rightPaddleY);
+    } else {
+      ball.position.setValues(state.ballX, state.ballY);
+      leftPaddle.position.y = state.leftPaddleY;
+      rightPaddle.position.y = state.rightPaddleY;
+    }
     scoreText.text = '${state.scoreLeft} - ${state.scoreRight}';
   }
 
   void startLocal() {
     overlays.remove('menu');
     _mode = GameMode.localPlaying;
-    _currentState = createInitialState();
+    _lastGameWasOnline = false;
+    _currentState = createInitialState(_dimensions);
     _winner = null;
   }
+
+  /// True if the current or most recent game was online (for game-over UI).
+  bool get lastGameWasOnline => _lastGameWasOnline;
+  bool _lastGameWasOnline = false;
 
   void startOnline(Side side) {
     overlays.remove('matchmaking');
     _mode = GameMode.onlinePlaying;
     _mySide = side;
+    _lastGameWasOnline = true;
   }
 
   void showMenu() {
@@ -188,6 +245,7 @@ class PongGame extends FlameGame {
     _mode = GameMode.onlineFinding;
     _matchmakingError = false;
     overlays.remove('menu');
+    overlays.remove('game_over');
     overlays.add('matchmaking');
     _gameStateSub?.cancel();
     _disconnectSub?.cancel();

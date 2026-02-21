@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cajpong_flutter/game/pong_game.dart';
 
 Widget buildMatchmakingOverlay(BuildContext context, PongGame game) {
+  final d = game.dimensions;
   if (game.matchmakingError) {
     return Container(
       color: const Color(0xFF111111),
@@ -9,14 +10,17 @@ Widget buildMatchmakingOverlay(BuildContext context, PongGame game) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Connection failed',
-              style: TextStyle(color: Colors.white, fontSize: 24),
+              style: TextStyle(color: Colors.white, fontSize: d.scale * 24),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: d.scale * 16),
             TextButton(
               onPressed: () => game.retryMatchmaking(),
-              child: const Text('Tap to retry'),
+              child: Text(
+                'Tap to retry',
+                style: TextStyle(fontSize: d.scale * 18),
+              ),
             ),
           ],
         ),
@@ -25,10 +29,10 @@ Widget buildMatchmakingOverlay(BuildContext context, PongGame game) {
   }
   return Container(
     color: const Color(0xFF111111),
-    child: const Center(
+    child: Center(
       child: Text(
         'Finding opponent…',
-        style: TextStyle(color: Colors.white, fontSize: 24),
+        style: TextStyle(color: Colors.white, fontSize: d.scale * 24),
       ),
     ),
   );

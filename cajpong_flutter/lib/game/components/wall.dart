@@ -1,15 +1,11 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:cajpong_flutter/utils/constants.dart';
 
 /// Top or bottom wall (visual only; collision is in game_loop).
+/// Size and position are set by the game from [GameDimensions].
 class Wall extends PositionComponent {
-  Wall({required this.isTop})
-      : super(
-          size: Vector2(width, wallHeight),
-          position: Vector2(0, isTop ? 0 : height - wallHeight),
-        );
+  Wall({required this.isTop}) : super(size: Vector2.zero(), position: Vector2.zero());
 
   final bool isTop;
 

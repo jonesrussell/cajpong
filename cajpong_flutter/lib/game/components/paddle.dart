@@ -1,11 +1,10 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:cajpong_flutter/utils/constants.dart';
 
-/// Left or right paddle. Position.y is updated by the game; x is fixed.
+/// Left or right paddle. Position and size are set by the game from [GameDimensions].
 class Paddle extends PositionComponent {
-  Paddle({required this.isLeft}) : super(size: Vector2(paddleWidth, paddleHeight));
+  Paddle({required this.isLeft}) : super(size: Vector2.zero());
 
   final bool isLeft;
 
