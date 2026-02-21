@@ -28,9 +28,7 @@ class PongGame extends FlameGame {
   GameDimensions get dimensions => _dimensions;
   late GameDimensions _dimensions;
 
-  GameMode _mode = GameMode.menu;
-  GameMode get mode => _mode;
-  set mode(GameMode value) => _mode = value;
+  GameMode mode = GameMode.menu;
 
   Side? get winner => _winner;
   Side? _winner;
@@ -104,14 +102,12 @@ class PongGame extends FlameGame {
     final maxY = d.height - d.paddleClampMargin;
     leftTouchZone = TouchZone(
       isLeft: true,
-      onTargetY: (y) =>
-          _leftTargetY = y == null ? null : y.clamp(minY, maxY).toDouble(),
+      onTargetY: (y) => _leftTargetY = y?.clamp(minY, maxY).toDouble(),
     )
       ..anchor = Anchor.topLeft;
     rightTouchZone = TouchZone(
       isLeft: false,
-      onTargetY: (y) =>
-          _rightTargetY = y == null ? null : y.clamp(minY, maxY).toDouble(),
+      onTargetY: (y) => _rightTargetY = y?.clamp(minY, maxY).toDouble(),
     )
       ..anchor = Anchor.topLeft;
     add(leftTouchZone);
@@ -158,9 +154,9 @@ class PongGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
-    if (_mode == GameMode.localPlaying && _currentState != null) {
+    if (mode == GameMode.localPlaying && _currentState != null) {
       _updateLocal(dt);
-    } else if (_mode == GameMode.onlinePlaying) {
+    } else if (mode == GameMode.onlinePlaying) {
       if (_currentState != null) _applyState(_currentState!, fromServer: true);
       _sendOnlineInput();
     }
@@ -172,8 +168,8 @@ class PongGame extends FlameGame {
         _mySide == Side.left ? leftPaddle.position.y : rightPaddle.position.y;
     final targetY =
         _mySide == Side.left ? _leftTargetY : _rightTargetY;
-    final up = targetY != null && targetY < paddleY;
-    final down = targetY != null && targetY > paddleY;
+    final up = targetY?.compareTo(paddleY) == -1;
+    final down = targetY?.compareTo(paddleY) == 1;
     _socketService.sendInput(up: up, down: down);
   }
 
@@ -191,7 +187,7 @@ class PongGame extends FlameGame {
     _applyState(_currentState!, fromServer: false);
     if (_currentState!.gameOver && _currentState!.winner != null) {
       _winner = _currentState!.winner;
-      _mode = GameMode.gameOver;
+      mode = GameMode.gameOver;
       overlays.add('game_over');
     }
   }
@@ -214,7 +210,7 @@ class PongGame extends FlameGame {
 
   void startLocal() {
     overlays.remove('menu');
-    _mode = GameMode.localPlaying;
+    mode = GameMode.localPlaying;
     _lastGameWasOnline = false;
     _currentState = createInitialState(_dimensions);
     _winner = null;
@@ -226,7 +222,7 @@ class PongGame extends FlameGame {
 
   void startOnline(Side side) {
     overlays.remove('matchmaking');
-    _mode = GameMode.onlinePlaying;
+    mode = GameMode.onlinePlaying;
     _mySide = side;
     _lastGameWasOnline = true;
   }
@@ -235,7 +231,7 @@ class PongGame extends FlameGame {
     overlays.remove('game_over');
     overlays.remove('matchmaking');
     overlays.add('menu');
-    _mode = GameMode.menu;
+    mode = GameMode.menu;
     _winner = null;
     _mySide = null;
     _currentState = null;
@@ -245,7 +241,7 @@ class PongGame extends FlameGame {
   }
 
   void showMatchmaking() {
-    _mode = GameMode.onlineFinding;
+    mode = GameMode.onlineFinding;
     _matchmakingError = false;
     overlays.remove('menu');
     overlays.remove('game_over');
@@ -253,18 +249,18 @@ class PongGame extends FlameGame {
     _gameStateSub?.cancel();
     _disconnectSub?.cancel();
     _disconnectSub = _socketService.onDisconnect.listen((_) {
-      if (_mode == GameMode.onlineFinding || _mode == GameMode.onlinePlaying) {
+      if (mode == GameMode.onlineFinding || mode == GameMode.onlinePlaying) {
         onOpponentLeft();
       }
     });
     _socketService.findMatch().then((payload) {
-      if (_mode != GameMode.onlineFinding) return;
+      if (mode != GameMode.onlineFinding) return;
       onMatched(payload.side);
       _socketService.startGameStateListener();
       _gameStateSub =
           _socketService.gameStateStream.listen(onGameState);
     }).catchError((_) {
-      if (_mode == GameMode.onlineFinding) {
+      if (mode == GameMode.onlineFinding) {
         _matchmakingError = true;
       }
     });
@@ -283,13 +279,13 @@ class PongGame extends FlameGame {
     _currentState = state;
     if (state.gameOver && state.winner != null) {
       _winner = state.winner;
-      _mode = GameMode.gameOver;
+      mode = GameMode.gameOver;
       overlays.add('game_over');
     }
   }
 
   void onOpponentLeft() {
-    _mode = GameMode.gameOver;
+    mode = GameMode.gameOver;
     overlays.add('game_over');
   }
 }
