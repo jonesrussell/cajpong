@@ -58,6 +58,8 @@ class PongGame extends FlameGame {
   double? _leftTargetY;
   double? _rightTargetY;
 
+  bool _componentsReady = false;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -65,6 +67,7 @@ class PongGame extends FlameGame {
     _dimensions = GameDimensions(refWidth, refHeight);
     _createComponents();
     _layoutFromDimensions(_dimensions);
+    _componentsReady = true;
     overlays.add('menu');
   }
 
@@ -120,7 +123,7 @@ class PongGame extends FlameGame {
     super.onGameResize(size);
     if (size.x <= 0 || size.y <= 0) return;
     _dimensions = GameDimensions(size.x, size.y);
-    _layoutFromDimensions(_dimensions);
+    if (_componentsReady) _layoutFromDimensions(_dimensions);
   }
 
   void _layoutFromDimensions(GameDimensions d) {
