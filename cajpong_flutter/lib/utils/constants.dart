@@ -9,7 +9,7 @@ const double refHeight = 600;
 const double paddleWidthRef = 20;
 const double paddleHeightRef = 100;
 const double paddlePaddingRef = 40;
-const double paddleSpeed = 400;
+const double paddleSpeed = 600;
 const double paddleClampMarginRef = 70;
 
 const double ballSizeRef = 16;

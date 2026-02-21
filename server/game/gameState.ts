@@ -128,8 +128,63 @@ export function step(
     }
   }
 
+  const prevBallX = s.ballX
+  const prevBallY = s.ballY
   s.ballX = s.ballX + s.ballVx * dt
   s.ballY = s.ballY + s.ballVy * dt
+
+  if (s.ballY - BALL_SIZE <= TOP_WALL) {
+    s.ballY = TOP_WALL + BALL_SIZE
+    s.ballVy = Math.abs(s.ballVy)
+  }
+  if (s.ballY + BALL_SIZE >= BOTTOM_WALL) {
+    s.ballY = BOTTOM_WALL - BALL_SIZE
+    s.ballVy = -Math.abs(s.ballVy)
+  }
+
+  const cooldownOk = s.gameTime - s.lastPaddleHitTime >= PADDLE_HIT_COOLDOWN_S
+  const leftPaddleRight = PADDLE_PADDING + HALF_PADDLE
+  const leftPaddleLeft = PADDLE_PADDING - HALF_PADDLE
+  const rightPaddleLeft = WIDTH - PADDLE_PADDING - HALF_PADDLE
+  const rightPaddleRight = WIDTH - PADDLE_PADDING + HALF_PADDLE
+
+  const dx = s.ballX - prevBallX
+
+  if (cooldownOk && s.ballVx < 0 && dx < 0) {
+    const t = (leftPaddleRight - prevBallX + BALL_SIZE) / dx
+    if (t >= 0 && t <= 1) {
+      const collideY = prevBallY + t * (s.ballY - prevBallY)
+      if (collideY >= s.leftPaddleY - HALF_PADDLE_H && collideY <= s.leftPaddleY + HALF_PADDLE_H) {
+        s.lastPaddleHitTime = s.gameTime
+        s.ballX = leftPaddleLeft - BALL_SIZE - BALL_PADDLE_SEPARATION
+        s.ballY = collideY
+        const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
+        const offset = clamp((collideY - s.leftPaddleY) / HALF_PADDLE_H, -1, 1)
+        const angle = offset * BALL_ANGLE_VARIATION
+        s.ballVx = speed * Math.cos(angle)
+        s.ballVy = speed * Math.sin(angle)
+        return s
+      }
+    }
+  }
+
+  if (cooldownOk && s.ballVx > 0 && dx > 0) {
+    const t = (rightPaddleLeft - prevBallX - BALL_SIZE) / dx
+    if (t >= 0 && t <= 1) {
+      const collideY = prevBallY + t * (s.ballY - prevBallY)
+      if (collideY >= s.rightPaddleY - HALF_PADDLE_H && collideY <= s.rightPaddleY + HALF_PADDLE_H) {
+        s.lastPaddleHitTime = s.gameTime
+        s.ballX = rightPaddleRight + BALL_SIZE + BALL_PADDLE_SEPARATION
+        s.ballY = collideY
+        const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
+        const offset = clamp((collideY - s.rightPaddleY) / HALF_PADDLE_H, -1, 1)
+        const angle = offset * BALL_ANGLE_VARIATION
+        s.ballVx = -speed * Math.cos(angle)
+        s.ballVy = speed * Math.sin(angle)
+        return s
+      }
+    }
+  }
 
   if (s.ballX < 0) {
     s.scoreRight++
@@ -163,59 +218,6 @@ export function step(
     s.serving = true
     s.serveDirection = 1
     s.serveCountdownRemaining = SERVE_DELAY_S
-    return s
-  }
-
-  if (s.ballY - BALL_SIZE <= TOP_WALL) {
-    s.ballY = TOP_WALL + BALL_SIZE
-    s.ballVy = Math.abs(s.ballVy)
-  }
-  if (s.ballY + BALL_SIZE >= BOTTOM_WALL) {
-    s.ballY = BOTTOM_WALL - BALL_SIZE
-    s.ballVy = -Math.abs(s.ballVy)
-  }
-
-  const cooldownOk = s.gameTime - s.lastPaddleHitTime >= PADDLE_HIT_COOLDOWN_S
-  const leftPaddleRight = PADDLE_PADDING + HALF_PADDLE
-  const leftPaddleLeft = PADDLE_PADDING - HALF_PADDLE
-  const rightPaddleLeft = WIDTH - PADDLE_PADDING - HALF_PADDLE
-  const rightPaddleRight = WIDTH - PADDLE_PADDING + HALF_PADDLE
-
-  const hitLeftPaddle =
-    cooldownOk &&
-    s.ballVx < 0 &&
-    s.ballX - BALL_SIZE <= leftPaddleRight &&
-    s.ballX + BALL_SIZE >= leftPaddleLeft &&
-    s.ballY >= s.leftPaddleY - HALF_PADDLE_H &&
-    s.ballY <= s.leftPaddleY + HALF_PADDLE_H
-
-  if (hitLeftPaddle) {
-    s.lastPaddleHitTime = s.gameTime
-    s.ballX = leftPaddleLeft - BALL_SIZE - BALL_PADDLE_SEPARATION
-    const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
-    const offset = clamp((s.ballY - s.leftPaddleY) / HALF_PADDLE_H, -1, 1)
-    const angle = offset * BALL_ANGLE_VARIATION
-    s.ballVx = speed * Math.cos(angle)
-    s.ballVy = speed * Math.sin(angle)
-    return s
-  }
-
-  const hitRightPaddle =
-    cooldownOk &&
-    s.ballVx > 0 &&
-    s.ballX - BALL_SIZE <= rightPaddleRight &&
-    s.ballX + BALL_SIZE >= rightPaddleLeft &&
-    s.ballY >= s.rightPaddleY - HALF_PADDLE_H &&
-    s.ballY <= s.rightPaddleY + HALF_PADDLE_H
-
-  if (hitRightPaddle) {
-    s.lastPaddleHitTime = s.gameTime
-    s.ballX = rightPaddleRight + BALL_SIZE + BALL_PADDLE_SEPARATION
-    const speed = Math.max(Math.hypot(s.ballVx, s.ballVy), BALL_SPEED) * BALL_SPEED_INCREASE
-    const offset = clamp((s.ballY - s.rightPaddleY) / HALF_PADDLE_H, -1, 1)
-    const angle = offset * BALL_ANGLE_VARIATION
-    s.ballVx = -speed * Math.cos(angle)
-    s.ballVy = speed * Math.sin(angle)
     return s
   }
 

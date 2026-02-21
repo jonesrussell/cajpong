@@ -108,6 +108,64 @@ GameState step(GameState state, Inputs inputs, double dt, GameDimensions d,
     nvy = -s.ballVy.abs();
   }
 
+  final cooldownOk =
+      s.gameTime - s.lastPaddleHitTime >= paddleHitCooldownS;
+  final leftPaddleRight = d.paddlePadding + d.halfPaddle;
+  final leftPaddleLeft = d.paddlePadding - d.halfPaddle;
+  final rightPaddleLeft = d.width - d.paddlePadding - d.halfPaddle;
+  final rightPaddleRight = d.width - d.paddlePadding + d.halfPaddle;
+
+  // Swept collision: check paddle hits along path (prevents tunneling).
+  final dx = nx - s.ballX;
+
+  if (cooldownOk && s.ballVx < 0 && dx < 0) {
+    final t = (leftPaddleRight - s.ballX + d.ballSize) / dx;
+    if (t >= 0 && t <= 1) {
+      final collideY = s.ballY + t * (ny - s.ballY);
+      if (collideY >= s.leftPaddleY - d.halfPaddleH &&
+          collideY <= s.leftPaddleY + d.halfPaddleH) {
+        final currentSpeed =
+            math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
+        final actualSpeed =
+            math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
+        final offset = _clamp(
+            (collideY - s.leftPaddleY) / d.halfPaddleH, -1.0, 1.0);
+        final angle = offset * ballAngleVariation;
+        return s.copyWith(
+          ballX: leftPaddleLeft - d.ballSize - d.ballPaddleSeparation,
+          ballY: collideY,
+          ballVx: actualSpeed * math.cos(angle),
+          ballVy: actualSpeed * math.sin(angle),
+          lastPaddleHitTime: s.gameTime,
+        );
+      }
+    }
+  }
+
+  if (cooldownOk && s.ballVx > 0 && dx > 0) {
+    final t = (rightPaddleLeft - s.ballX - d.ballSize) / dx;
+    if (t >= 0 && t <= 1) {
+      final collideY = s.ballY + t * (ny - s.ballY);
+      if (collideY >= s.rightPaddleY - d.halfPaddleH &&
+          collideY <= s.rightPaddleY + d.halfPaddleH) {
+        final currentSpeed =
+            math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
+        final actualSpeed =
+            math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
+        final offset = _clamp(
+            (collideY - s.rightPaddleY) / d.halfPaddleH, -1.0, 1.0);
+        final angle = offset * ballAngleVariation;
+        return s.copyWith(
+          ballX: rightPaddleRight + d.ballSize + d.ballPaddleSeparation,
+          ballY: collideY,
+          ballVx: -actualSpeed * math.cos(angle),
+          ballVy: actualSpeed * math.sin(angle),
+          lastPaddleHitTime: s.gameTime,
+        );
+      }
+    }
+  }
+
   if (nx < 0) {
     int scoreRight = s.scoreRight + 1;
     Side? winner = getWinner(s.scoreLeft, scoreRight);
@@ -138,59 +196,6 @@ GameState step(GameState state, Inputs inputs, double dt, GameDimensions d,
       serving: winner == null,
       serveDirection: winner == null ? 1 : null,
       serveCountdownRemaining: winner == null ? serveDelayS : 0,
-    );
-  }
-
-  final cooldownOk =
-      s.gameTime - s.lastPaddleHitTime >= paddleHitCooldownS;
-  final leftPaddleRight = d.paddlePadding + d.halfPaddle;
-  final leftPaddleLeft = d.paddlePadding - d.halfPaddle;
-  final rightPaddleLeft = d.width - d.paddlePadding - d.halfPaddle;
-  final rightPaddleRight = d.width - d.paddlePadding + d.halfPaddle;
-
-  final hitLeftPaddle = cooldownOk &&
-      s.ballVx < 0 &&
-      nx - d.ballSize <= leftPaddleRight &&
-      nx + d.ballSize >= leftPaddleLeft &&
-      ny >= s.leftPaddleY - d.halfPaddleH &&
-      ny <= s.leftPaddleY + d.halfPaddleH;
-
-  if (hitLeftPaddle) {
-    final currentSpeed = math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
-    final actualSpeed =
-        math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
-    final offset = _clamp(
-        (ny - s.leftPaddleY) / d.halfPaddleH, -1.0, 1.0);
-    final angle = offset * ballAngleVariation;
-    return s.copyWith(
-      ballX: leftPaddleLeft - d.ballSize - d.ballPaddleSeparation,
-      ballY: ny,
-      ballVx: actualSpeed * math.cos(angle),
-      ballVy: actualSpeed * math.sin(angle),
-      lastPaddleHitTime: s.gameTime,
-    );
-  }
-
-  final hitRightPaddle = cooldownOk &&
-      s.ballVx > 0 &&
-      nx - d.ballSize <= rightPaddleRight &&
-      nx + d.ballSize >= rightPaddleLeft &&
-      ny >= s.rightPaddleY - d.halfPaddleH &&
-      ny <= s.rightPaddleY + d.halfPaddleH;
-
-  if (hitRightPaddle) {
-    final currentSpeed = math.sqrt(s.ballVx * s.ballVx + s.ballVy * s.ballVy);
-    final actualSpeed =
-        math.max(currentSpeed, ballSpeed) * ballSpeedIncrease;
-    final offset = _clamp(
-        (ny - s.rightPaddleY) / d.halfPaddleH, -1.0, 1.0);
-    final angle = offset * ballAngleVariation;
-    return s.copyWith(
-      ballX: rightPaddleRight + d.ballSize + d.ballPaddleSeparation,
-      ballY: ny,
-      ballVx: -actualSpeed * math.cos(angle),
-      ballVy: actualSpeed * math.sin(angle),
-      lastPaddleHitTime: s.gameTime,
     );
   }
 

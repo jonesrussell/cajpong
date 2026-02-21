@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flame/camera.dart';
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/material.dart' show KeyEventResult;
 import 'package:flutter/painting.dart';
+import 'package:flutter/services.dart';
 import 'package:cajpong_flutter/game/components/ball.dart';
 import 'package:cajpong_flutter/game/components/paddle.dart';
 import 'package:cajpong_flutter/game/components/touch_zone.dart';
@@ -16,7 +19,7 @@ import 'package:cajpong_flutter/utils/constants.dart';
 enum GameMode { menu, localPlaying, onlineFinding, onlinePlaying, gameOver }
 
 /// Root Flame game: one game instance, mode and overlays control menu/play/game over.
-class PongGame extends FlameGame {
+class PongGame extends FlameGame with KeyboardEvents {
   PongGame({required PongSocketService socketService})
       : _socketService = socketService;
 
@@ -55,6 +58,8 @@ class PongGame extends FlameGame {
 
   double? _leftTargetY;
   double? _rightTargetY;
+
+  final Set<LogicalKeyboardKey> _keysHeld = {};
 
   bool _componentsReady = false;
 
@@ -151,6 +156,28 @@ class PongGame extends FlameGame {
     rightTouchZone.size.setValues(d.width / 2, d.height);
   }
 
+  static const _keyLeftUp = LogicalKeyboardKey.keyW;
+  static const _keyLeftDown = LogicalKeyboardKey.keyS;
+  static const _keyRightUp = LogicalKeyboardKey.arrowUp;
+  static const _keyRightDown = LogicalKeyboardKey.arrowDown;
+
+  @override
+  KeyEventResult onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == _keyLeftUp ||
+          event.logicalKey == _keyLeftDown ||
+          event.logicalKey == _keyRightUp ||
+          event.logicalKey == _keyRightDown) {
+        _keysHeld.add(event.logicalKey);
+        return KeyEventResult.handled;
+      }
+    } else if (event is KeyUpEvent) {
+      _keysHeld.remove(event.logicalKey);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -168,17 +195,29 @@ class PongGame extends FlameGame {
         _mySide == Side.left ? leftPaddle.position.y : rightPaddle.position.y;
     final targetY =
         _mySide == Side.left ? _leftTargetY : _rightTargetY;
-    final up = targetY?.compareTo(paddleY) == -1;
-    final down = targetY?.compareTo(paddleY) == 1;
+    final keyUp = _mySide == Side.left
+        ? _keysHeld.contains(_keyLeftUp)
+        : _keysHeld.contains(_keyRightUp);
+    final keyDown = _mySide == Side.left
+        ? _keysHeld.contains(_keyLeftDown)
+        : _keysHeld.contains(_keyRightDown);
+    final up = keyUp || targetY?.compareTo(paddleY) == -1;
+    final down = keyDown || targetY?.compareTo(paddleY) == 1;
     _socketService.sendInput(up: up, down: down);
   }
 
   void _updateLocal(double dt) {
     final state = _currentState!;
-    final leftUp = _leftTargetY?.compareTo(leftPaddle.position.y) == -1;
-    final leftDown = _leftTargetY?.compareTo(leftPaddle.position.y) == 1;
-    final rightUp = _rightTargetY?.compareTo(rightPaddle.position.y) == -1;
-    final rightDown = _rightTargetY?.compareTo(rightPaddle.position.y) == 1;
+    final leftPaddleY = leftPaddle.position.y;
+    final rightPaddleY = rightPaddle.position.y;
+    final leftUp = _keysHeld.contains(_keyLeftUp) ||
+        _leftTargetY?.compareTo(leftPaddleY) == -1;
+    final leftDown = _keysHeld.contains(_keyLeftDown) ||
+        _leftTargetY?.compareTo(leftPaddleY) == 1;
+    final rightUp = _keysHeld.contains(_keyRightUp) ||
+        _rightTargetY?.compareTo(rightPaddleY) == -1;
+    final rightDown = _keysHeld.contains(_keyRightDown) ||
+        _rightTargetY?.compareTo(rightPaddleY) == 1;
     final inputs = Inputs(
       left: PaddleInput(up: leftUp, down: leftDown),
       right: PaddleInput(up: rightUp, down: rightDown),
