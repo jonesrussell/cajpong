@@ -48,7 +48,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/cajpong
+            cd /opt/cajpong
             echo "IMAGE_TAG=${{ github.sha }}" > .env
             docker compose pull
             docker compose up -d
