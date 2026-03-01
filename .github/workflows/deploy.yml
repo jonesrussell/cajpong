@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: deploy
@@ -11,9 +12,12 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       packages: write
+    env:
+      SERVER_URL: https://pong.northcloud.one
     steps:
       - uses: actions/checkout@v4
 
@@ -24,7 +28,7 @@ jobs:
       - run: |
           cd cajpong_flutter
           flutter pub get
-          flutter build web --dart-define=SERVER_URL=https://pong.northcloud.biz
+          flutter build web --dart-define=SERVER_URL=${SERVER_URL}
 
       # Docker build & push
       - uses: docker/login-action@v3

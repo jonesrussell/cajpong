@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy CajPong to jones@pong.northcloud.biz
+# Deploy CajPong to jones@pong.northcloud.one
 # Usage: ./deploy.sh [restart]
 #   restart - after syncing, SSH and run npm install then pm2 restart cajpong (or pm2 start)
 #
@@ -7,9 +7,9 @@
 # Set DEPLOY_HOST, DEPLOY_PATH, or SERVER_URL to override defaults.
 
 set -e
-HOST="${DEPLOY_HOST:-jones@pong.northcloud.biz}"
+HOST="${DEPLOY_HOST:-jones@pong.northcloud.one}"
 PATH_ON_HOST="${DEPLOY_PATH:-~/cajpong}"
-PUBLIC_URL="${SERVER_URL:-https://pong.northcloud.biz}"
+PUBLIC_URL="${SERVER_URL:-https://pong.northcloud.one}"
 
 echo "Building Flutter web client with SERVER_URL=$PUBLIC_URL"
 cd cajpong_flutter

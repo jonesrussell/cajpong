@@ -1,4 +1,4 @@
-# Deploying to pong.northcloud.biz
+# Deploying to pong.northcloud.one
 
 ## Deployment methods
 
@@ -27,7 +27,7 @@ sudo chown deployer:deployer /opt/cajpong
 sudo -u deployer cp /tmp/docker-compose.yml /opt/cajpong/
 ```
 
-**2. Caddy** (pong.northcloud.biz; Caddyfile lives in `/opt/cajpong/Caddyfile`). After the repo Caddyfile is on the server at `/tmp/Caddyfile`:
+**2. Caddy** (pong.northcloud.one; Caddyfile lives in `/opt/cajpong/Caddyfile`). After the repo Caddyfile is on the server at `/tmp/Caddyfile`:
 
 ```bash
 sudo apt install -y caddy
@@ -55,11 +55,11 @@ sudo -u jones bash -c 'cd ~/cajpong && docker compose down'
 sudo -u deployer bash -c 'cd /opt/cajpong && echo "IMAGE_TAG=SHA" > .env && docker compose pull && docker compose up -d'
 ```
 
-Notes: GHCR — if the image is private, log in as deployer on the server (`docker login ghcr.io`). DNS — point `pong.northcloud.biz` to the same IP as the deploy host.
+Notes: GHCR — if the image is private, log in as deployer on the server (`docker login ghcr.io`). DNS — point `pong.northcloud.one` to the same IP as the deploy host.
 
 ### What CI does on push to `main`
 
-1. Builds Flutter web with `SERVER_URL=https://pong.northcloud.biz`.
+1. Builds Flutter web with `SERVER_URL=https://pong.northcloud.one`.
 2. Builds the Docker image (Node server + Flutter static assets), tags as `:latest` and `:<sha>`.
 3. Pushes the image to GitHub Container Registry (ghcr.io).
 4. SSHs to the server, runs:
@@ -73,7 +73,7 @@ Notes: GHCR — if the image is private, log in as deployer on the server (`dock
 On the server, set `IMAGE_TAG` to a previous commit SHA, then redeploy:
 
 ```bash
-ssh deployer@northcloud.biz
+ssh deployer@northcloud.one
 cd /opt/cajpong
 # Edit .env and set IMAGE_TAG to the desired SHA (e.g. abc1234)
 docker compose pull
@@ -90,7 +90,7 @@ From the repo root:
 ./deploy.sh
 ```
 
-This builds the Flutter web client with `SERVER_URL=https://pong.northcloud.biz`, then rsyncs the project to the server (default `~/cajpong`; set `DEPLOY_PATH` to use e.g. `/opt/cajpong`).
+This builds the Flutter web client with `SERVER_URL=https://pong.northcloud.one`, then rsyncs the project to the server (default `~/cajpong`; set `DEPLOY_PATH` to use e.g. `/opt/cajpong`).
 
 To install dependencies and start (or restart) the app with pm2:
 
@@ -100,9 +100,9 @@ To install dependencies and start (or restart) the app with pm2:
 
 ## Overriding defaults (legacy deploy)
 
-- `DEPLOY_HOST` — default `jones@pong.northcloud.biz`
+- `DEPLOY_HOST` — default `jones@pong.northcloud.one`
 - `DEPLOY_PATH` — default `~/cajpong` (legacy); CI uses `/opt/cajpong`
-- `SERVER_URL` — default `https://pong.northcloud.biz` (used at Flutter build time)
+- `SERVER_URL` — default `https://pong.northcloud.one` (used at Flutter build time)
 
 Example:
 

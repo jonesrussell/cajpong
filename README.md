@@ -28,7 +28,7 @@ The Flutter app defaults to `http://localhost:3000` for the server URL.
 - **cajpong_flutter/** — Flutter + Flame game (see [cajpong_flutter/README.md](cajpong_flutter/README.md))
 - **server/** — Socket.IO matchmaking and game loop (TypeScript, Node)
 - **CLAUDE.md** — Project notes and commands for Claude
-- **DEPLOY.md** — Deploy to pong.northcloud.biz
+- **DEPLOY.md** — Deploy to pong.northcloud.one
 
 ## Deploy
 
