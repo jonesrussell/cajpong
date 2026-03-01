@@ -1,6 +1,5 @@
-/// Game tuning values (ported from Phaser constants).
-/// Reference size 800x600; runtime dimensions scale from [GameDimensions].
-library;
+// Game tuning values (ported from Phaser constants).
+// Reference size 800x600; runtime dimensions scale from [GameDimensions].
 
 /// Reference size used by server and for scaling (server space).
 const double refWidth = 800;
@@ -31,10 +30,6 @@ const int winDisplayDelayMs = 2500;
 
 const double buttonWidthRef = 180;
 const double buttonHeightRef = 50;
-
-const int colorWhite = 0xFFFFFF;
-const int colorWall = 0x444444;
-const String colorText = '#FFFFFF';
 
 /// Scaled dimensions for the current game canvas (responsive layout).
 class GameDimensions {
@@ -86,7 +81,4 @@ class GameDimensions {
   /// Scale server state (800x600) to client coordinates.
   double serverXToClient(double x) => x * scaleX;
   double serverYToClient(double y) => y * scaleY;
-
-  /// Scale client Y to server space (for any future use).
-  double clientYToServer(double y) => y / scaleY;
 }

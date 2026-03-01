@@ -18,8 +18,6 @@ class PongSocketService {
   Stream<GameState> get gameStateStream => _gameStateController.stream;
   Stream<void> get onDisconnect => _disconnectController.stream;
 
-  bool get isConnected => _socket?.connected ?? false;
-
   void connect() {
     if (_socket != null) return;
     _socket = io.io(
@@ -28,7 +26,6 @@ class PongSocketService {
           .setTransports(['websocket'])
           .build(),
     );
-    _socket!.onConnect((_) {});
     _socket!.onConnectError((err) => _disconnectController.add(null));
     _socket!.onDisconnect((_) => _disconnectController.add(null));
     _socket!.on('opponent_left', (_) => _disconnectController.add(null));
@@ -47,11 +44,6 @@ class PongSocketService {
     }
     _socket!.on('matched', onMatched);
     _socket!.emit('find_match');
-    if (_socket!.connected) {
-      // already connected
-    } else {
-      _socket!.once('connect', (_) {});
-    }
     return completer.future;
   }
 

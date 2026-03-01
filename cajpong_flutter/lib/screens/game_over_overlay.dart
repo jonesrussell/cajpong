@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cajpong_flutter/game/pong_game.dart';
 import 'package:cajpong_flutter/models/game_state.dart';
+import 'package:cajpong_flutter/screens/pong_button.dart';
 import 'package:cajpong_flutter/utils/constants.dart';
 
 Widget buildGameOverOverlay(BuildContext context, PongGame game) {
@@ -56,14 +57,14 @@ class _GameOverOverlayState extends State<_GameOverOverlay> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _GameOverButton(
+                  PongButton(
                     label: 'Find new match',
                     onTap: () => game.showMatchmaking(),
                     width: d.buttonWidth,
                     height: d.buttonHeight,
                   ),
                   SizedBox(width: d.scale * 24),
-                  _GameOverButton(
+                  PongButton(
                     label: 'Menu',
                     onTap: () => game.showMenu(),
                     width: d.buttonWidth,
@@ -84,43 +85,6 @@ class _GameOverOverlayState extends State<_GameOverOverlay> {
           message,
           style: TextStyle(color: Colors.white, fontSize: fontSize),
           textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
-
-class _GameOverButton extends StatelessWidget {
-  const _GameOverButton({
-    required this.label,
-    required this.onTap,
-    required this.width,
-    required this.height,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFF333333),
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: height * 0.48,
-              ),
-            ),
-          ),
         ),
       ),
     );

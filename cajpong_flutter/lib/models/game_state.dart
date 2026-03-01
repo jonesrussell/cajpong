@@ -1,5 +1,4 @@
-/// Shared game state and message types for local and online play.
-library;
+// Shared game state and message types for local and online play.
 
 /// Which side scored or won.
 enum Side { left, right }

@@ -20,14 +20,10 @@ const MIME: Record<string, string> = {
   '.css': 'text/css',
   '.ico': 'image/x-icon',
   '.json': 'application/json',
+  '.wasm': 'application/wasm',
 }
 const DT = 1 / 60
 const TICK_MS = 1000 / 60
-
-const defaultInputs: Inputs = {
-  left: { up: false, down: false },
-  right: { up: false, down: false },
-}
 
 type Side = 'left' | 'right'
 
@@ -36,7 +32,6 @@ interface Room {
   sockets: { left: import('socket.io').Socket; right: import('socket.io').Socket }
   state: GameState
   lastInputs: { left: Inputs['left']; right: Inputs['right'] }
-  prevInputs: { left: Inputs['left']; right: Inputs['right'] }
   tick: number
   intervalId: ReturnType<typeof setInterval>
 }
@@ -60,7 +55,6 @@ function tryMatch(): void {
       sockets: { left: leftSocket, right: rightSocket },
       state,
       lastInputs: { left: { up: false, down: false }, right: { up: false, down: false } },
-      prevInputs: { left: { up: false, down: false }, right: { up: false, down: false } },
       tick: 0,
       intervalId: null!,
     }
@@ -75,10 +69,9 @@ function tryMatch(): void {
       const r = rooms.get(roomId)
       if (!r) return
       const inputsForTick: Inputs = {
-        left: r.lastInputs.left ?? r.prevInputs.left ?? defaultInputs.left,
-        right: r.lastInputs.right ?? r.prevInputs.right ?? defaultInputs.right,
+        left: r.lastInputs.left,
+        right: r.lastInputs.right,
       }
-      r.prevInputs = { ...r.lastInputs }
       r.state = step(r.state, inputsForTick, DT)
       r.tick++
       leftSocket.emit('game_state', { state: r.state, tick: r.tick })
