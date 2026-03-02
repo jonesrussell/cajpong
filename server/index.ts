@@ -146,14 +146,15 @@ io.on('connection', (socket) => {
     tryMatch()
   })
 
-  socket.on('input', (payload: { up?: boolean; down?: boolean }) => {
+  socket.on('input', (payload: { up?: boolean; down?: boolean; targetY?: number }) => {
     const entry = socketToRoom.get(socket)
     if (!entry) return
     const room = rooms.get(entry.roomId)
     if (!room) return
     const up = payload?.up ?? false
     const down = payload?.down ?? false
-    room.lastInputs[entry.side] = { up, down }
+    const targetY = Number.isFinite(payload?.targetY) ? payload.targetY : undefined
+    room.lastInputs[entry.side] = { up, down, targetY }
   })
 
   socket.on('disconnect', () => {

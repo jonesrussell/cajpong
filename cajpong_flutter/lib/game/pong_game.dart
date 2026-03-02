@@ -73,6 +73,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   bool _componentsReady = false;
 
   static const int _maxDurability = 8;
+  static const double _targetDeadZoneRef = 10.0;
   static const double _onlineSmoothing = 14.0;
   static const double _onlinePredictionSeconds = 0.04;
   static const double _onlineBallSnapDistance = 140.0;
@@ -319,29 +320,40 @@ class PongGame extends FlameGame with KeyboardEvents {
     final paddleY =
         _mySide == Side.left ? leftPaddle.position.y : rightPaddle.position.y;
     final targetY = _mySide == Side.left ? _leftTargetY : _rightTargetY;
+    final targetServerY =
+        targetY == null ? null : _dimensions.clientYToServer(targetY);
+    final deltaY = targetY == null ? null : (targetY - paddleY);
+    final deadZone = _targetDeadZoneRef * _dimensions.scaleY;
     final keyUp = _mySide == Side.left
         ? _keysHeld.contains(_keyLeftUp)
         : _keysHeld.contains(_keyRightUp);
     final keyDown = _mySide == Side.left
         ? _keysHeld.contains(_keyLeftDown)
         : _keysHeld.contains(_keyRightDown);
-    final up = keyUp || targetY?.compareTo(paddleY) == -1;
-    final down = keyDown || targetY?.compareTo(paddleY) == 1;
-    _socketService.sendInput(up: up, down: down);
+    final touchUp = deltaY != null && deltaY < -deadZone;
+    final touchDown = deltaY != null && deltaY > deadZone;
+    final up = keyUp || touchUp;
+    final down = keyDown || touchDown;
+    _socketService.sendInput(up: up, down: down, targetY: targetServerY);
   }
 
   void _updateLocal(double dt) {
     final previous = _currentState!;
     final leftPaddleY = leftPaddle.position.y;
     final rightPaddleY = rightPaddle.position.y;
+    final deadZone = _targetDeadZoneRef * _dimensions.scaleY;
+    final leftDelta =
+        _leftTargetY == null ? null : (_leftTargetY! - leftPaddleY);
+    final rightDelta =
+        _rightTargetY == null ? null : (_rightTargetY! - rightPaddleY);
     final leftUp = _keysHeld.contains(_keyLeftUp) ||
-        _leftTargetY?.compareTo(leftPaddleY) == -1;
+        (leftDelta != null && leftDelta < -deadZone);
     final leftDown = _keysHeld.contains(_keyLeftDown) ||
-        _leftTargetY?.compareTo(leftPaddleY) == 1;
+        (leftDelta != null && leftDelta > deadZone);
     final rightUp = _keysHeld.contains(_keyRightUp) ||
-        _rightTargetY?.compareTo(rightPaddleY) == -1;
+        (rightDelta != null && rightDelta < -deadZone);
     final rightDown = _keysHeld.contains(_keyRightDown) ||
-        _rightTargetY?.compareTo(rightPaddleY) == 1;
+        (rightDelta != null && rightDelta > deadZone);
     final inputs = Inputs(
       left: PaddleInput(up: leftUp, down: leftDown),
       right: PaddleInput(up: rightUp, down: rightDown),

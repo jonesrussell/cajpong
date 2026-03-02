@@ -59,8 +59,8 @@ class PongSocketService {
     });
   }
 
-  void sendInput({required bool up, required bool down}) {
-    _socket?.emit('input', {'up': up, 'down': down});
+  void sendInput({required bool up, required bool down, double? targetY}) {
+    _socket?.emit('input', {'up': up, 'down': down, 'targetY': targetY});
   }
 
   void disconnect() {

@@ -8,7 +8,7 @@ const double refHeight = 600;
 const double paddleWidthRef = 20;
 const double paddleHeightRef = 100;
 const double paddlePaddingRef = 40;
-const double paddleSpeed = 600;
+const double paddleSpeed = 700;
 const double paddleClampMarginRef = 70;
 
 const double ballSizeRef = 16;
@@ -81,4 +81,7 @@ class GameDimensions {
   /// Scale server state (800x600) to client coordinates.
   double serverXToClient(double x) => x * scaleX;
   double serverYToClient(double y) => y * scaleY;
+
+  /// Scale client-space coordinates back to server space (800x600).
+  double clientYToServer(double y) => y / scaleY;
 }

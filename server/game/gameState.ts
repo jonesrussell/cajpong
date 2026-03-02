@@ -41,8 +41,8 @@ export interface GameState {
 }
 
 export interface Inputs {
-  left: { up: boolean; down: boolean }
-  right: { up: boolean; down: boolean }
+  left: { up: boolean; down: boolean; targetY?: number }
+  right: { up: boolean; down: boolean; targetY?: number }
 }
 
 const PADDLE_HIT_COOLDOWN_S = PADDLE_HIT_COOLDOWN_MS / 1000
@@ -62,7 +62,16 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-function movePaddleFromInput(y: number, up: boolean, down: boolean, dt: number): number {
+function movePaddleFromInput(
+  y: number,
+  up: boolean,
+  down: boolean,
+  dt: number,
+  targetY?: number
+): number {
+  if (targetY != null && Number.isFinite(targetY)) {
+    return clamp(targetY, PADDLE_CLAMP_MARGIN, MAX_Y)
+  }
   if (up) y -= PADDLE_SPEED * dt
   else if (down) y += PADDLE_SPEED * dt
   return clamp(y, PADDLE_CLAMP_MARGIN, MAX_Y)
@@ -104,8 +113,8 @@ export function step(
   const s: GameState = { ...state }
 
   s.gameTime = s.gameTime + dt
-  s.leftPaddleY = movePaddleFromInput(s.leftPaddleY, left.up, left.down, dt)
-  s.rightPaddleY = movePaddleFromInput(s.rightPaddleY, right.up, right.down, dt)
+  s.leftPaddleY = movePaddleFromInput(s.leftPaddleY, left.up, left.down, dt, left.targetY)
+  s.rightPaddleY = movePaddleFromInput(s.rightPaddleY, right.up, right.down, dt, right.targetY)
 
   if (s.gameOver) return s
 
