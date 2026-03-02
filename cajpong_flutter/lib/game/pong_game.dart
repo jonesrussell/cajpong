@@ -73,6 +73,10 @@ class PongGame extends FlameGame with KeyboardEvents {
   bool _componentsReady = false;
 
   static const int _maxDurability = 8;
+  static const double _onlineSmoothing = 14.0;
+  static const double _onlinePredictionSeconds = 0.04;
+  static const double _onlineBallSnapDistance = 140.0;
+  static const double _onlinePaddleSnapDistance = 90.0;
   static int _bestCampaignScore = 0;
   int _campaignScore = 0;
   int _campaignLevel = 1;
@@ -258,9 +262,56 @@ class PongGame extends FlameGame with KeyboardEvents {
     if (mode == GameMode.localPlaying && _currentState != null) {
       _updateLocal(dt);
     } else if (mode == GameMode.onlinePlaying) {
-      if (_currentState != null) _applyState(_currentState!, fromServer: true);
+      _updateOnlineVisuals(dt);
       _sendOnlineInput();
     }
+  }
+
+  void _updateOnlineVisuals(double dt) {
+    final state = _currentState;
+    if (state == null) return;
+
+    final renderAlpha = 1 - math.exp(-_onlineSmoothing * dt);
+    final predictedBallX = state.serving
+        ? state.ballX
+        : (state.ballX + (state.ballVx * _onlinePredictionSeconds));
+    final predictedBallY = state.serving
+        ? state.ballY
+        : (state.ballY + (state.ballVy * _onlinePredictionSeconds));
+
+    final targetBallX = _dimensions.serverXToClient(predictedBallX);
+    final targetBallY = _dimensions.serverYToClient(predictedBallY);
+    final targetLeftY = _dimensions.serverYToClient(state.leftPaddleY);
+    final targetRightY = _dimensions.serverYToClient(state.rightPaddleY);
+
+    final ballDx = targetBallX - ball.position.x;
+    final ballDy = targetBallY - ball.position.y;
+    final ballDist = math.sqrt((ballDx * ballDx) + (ballDy * ballDy));
+    if (ballDist > _onlineBallSnapDistance) {
+      ball.position.setValues(targetBallX, targetBallY);
+    } else {
+      ball.position.setValues(
+        ball.position.x + (ballDx * renderAlpha),
+        ball.position.y + (ballDy * renderAlpha),
+      );
+    }
+
+    final leftDy = targetLeftY - leftPaddle.position.y;
+    if (leftDy.abs() > _onlinePaddleSnapDistance) {
+      leftPaddle.position.y = targetLeftY;
+    } else {
+      leftPaddle.position.y += leftDy * renderAlpha;
+    }
+
+    final rightDy = targetRightY - rightPaddle.position.y;
+    if (rightDy.abs() > _onlinePaddleSnapDistance) {
+      rightPaddle.position.y = targetRightY;
+    } else {
+      rightPaddle.position.y += rightDy * renderAlpha;
+    }
+
+    scoreText.text = '${state.scoreLeft} - ${state.scoreRight}';
+    hudText.text = _mySide == null ? '' : 'Online duel';
   }
 
   void _sendOnlineInput() {
@@ -609,7 +660,11 @@ class PongGame extends FlameGame with KeyboardEvents {
   }
 
   void onGameState(GameState state) {
+    final wasNull = _currentState == null;
     _currentState = state;
+    if (mode == GameMode.onlinePlaying && wasNull) {
+      _applyState(_currentState!, fromServer: true);
+    }
     if (state.gameOver && state.winner != null) {
       _winner = state.winner;
       mode = GameMode.gameOver;
