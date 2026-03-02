@@ -12,6 +12,7 @@ dependencies:
   flame: ^1.14.0
   shared_preferences: ^2.3.3
   socket_io_client: ^2.0.3+1
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:

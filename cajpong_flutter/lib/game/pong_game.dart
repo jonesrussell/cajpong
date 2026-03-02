@@ -19,6 +19,7 @@ import 'package:cajpong_flutter/models/game_state.dart';
 import 'package:cajpong_flutter/services/pong_socket_service.dart';
 import 'package:cajpong_flutter/utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 enum GameMode { menu, localPlaying, onlineFinding, onlinePlaying, gameOver }
 
@@ -30,6 +31,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   final PongSocketService _socketService;
   StreamSubscription<GameState>? _gameStateSub;
   StreamSubscription<void>? _disconnectSub;
+  bool _matchmakingWakeLockEnabled = false;
 
   /// Current game dimensions (canvas size); updated in onGameResize.
   GameDimensions get dimensions => _dimensions;
@@ -103,6 +105,12 @@ class PongGame extends FlameGame with KeyboardEvents {
   Future<void> _saveBestCampaignScore() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_bestScorePrefKey, _bestCampaignScore);
+  }
+
+  Future<void> _setMatchmakingWakeLock(bool enabled) async {
+    if (_matchmakingWakeLockEnabled == enabled) return;
+    _matchmakingWakeLockEnabled = enabled;
+    await WakelockPlus.toggle(enable: enabled);
   }
 
   @override
@@ -490,6 +498,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   }
 
   void startLocal() {
+    unawaited(_setMatchmakingWakeLock(false));
     overlays.remove('menu');
     overlays.remove('game_over');
     mode = GameMode.localPlaying;
@@ -516,6 +525,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   bool _lastGameWasOnline = false;
 
   void startOnline(Side side) {
+    unawaited(_setMatchmakingWakeLock(false));
     overlays.remove('matchmaking');
     mode = GameMode.onlinePlaying;
     _mySide = side;
@@ -528,6 +538,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   }
 
   void showMenu() {
+    unawaited(_setMatchmakingWakeLock(false));
     overlays.remove('game_over');
     overlays.remove('matchmaking');
     overlays.add('menu');
@@ -557,6 +568,7 @@ class PongGame extends FlameGame with KeyboardEvents {
   }
 
   void showMatchmaking() {
+    unawaited(_setMatchmakingWakeLock(true));
     mode = GameMode.onlineFinding;
     _matchmakingError = false;
     _lastGameWasOnline = true;
@@ -606,8 +618,17 @@ class PongGame extends FlameGame with KeyboardEvents {
   }
 
   void onOpponentLeft() {
+    unawaited(_setMatchmakingWakeLock(false));
     mode = GameMode.gameOver;
     _winner = null;
     overlays.add('game_over');
+  }
+
+  @override
+  void onRemove() {
+    _gameStateSub?.cancel();
+    _disconnectSub?.cancel();
+    unawaited(_setMatchmakingWakeLock(false));
+    super.onRemove();
   }
 }
